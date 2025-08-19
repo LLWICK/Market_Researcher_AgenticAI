@@ -8,4 +8,4 @@ then open this repo on vs code and give the following command
 
 # uv add crewai[tools]
 
-add aditional tools if you wanted
+add aditional tools if you want
