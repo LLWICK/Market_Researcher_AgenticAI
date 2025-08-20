@@ -7,5 +7,6 @@ first you should install uv on your pc
 then open this repo on vs code and give the following command
 
 # uv add crewai[tools]
+# uv pip install phidata
 
 add aditional tools if you want
