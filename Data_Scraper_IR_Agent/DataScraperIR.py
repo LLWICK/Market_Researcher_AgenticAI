@@ -195,7 +195,7 @@ def collect_and_index(query: str, k_search: int = 10, k_index: int = 8) -> Dict:
 
 
 
-print(collect_and_index("NVDA latest news", k_search=10, k_index=6))
+print(collect_and_index("Nvidia stock prices upto 2025 give me the response in jason format", k_search=10, k_index=6))
 hits = ir_search("NVIDIA earnings GPU AI data center")
 for h in hits[:5]:
     print(f"- {h['title']} -> {h['url']} [{h['source']}] (score={h['score']:.2f})")
