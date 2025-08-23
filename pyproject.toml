@@ -13,4 +13,7 @@ dependencies = [
     "httpx",
     "pydantic-settings",
     "tqdm",
+    "requests>=2.32.5",
+    "html5lib>=1.1",
+    "python-dotenv>=1.1.1",
 ]
