@@ -3,48 +3,57 @@ from phi.model.groq import Groq
 from DataScraperIR import collect_and_index, ir_search
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
-# Initialize Phi LLM
-llm = Groq(model="openai/gpt-oss-120b", api_key=os.getenv("GROQ_API_KEY"))
-
-# Properly named Python functions
-def scrape_marketing_data(prompt: str) -> str:
+# --- Step 1: Python functions must have proper __name__
+def scrape_marketing_data(prompt: str):
     return collect_and_index(prompt, k_search=15, k_index=8)
 
-def search_index(query: str) -> list:
+scrape_marketing_data.__name__ = "scrape_marketing_data"  # explicit name
+
+def search_index(query: str):
     return ir_search(query)[:5]
 
-# Wrap as Tools
+search_index.__name__ = "search_index"  # explicit name
+
+# --- Step 2: Wrap as Tools with type="function" ---
 scrape_tool = Tool(
-    type="function",
+    type="function",  # required by Groq
+    func=scrape_marketing_data,
     name="ScrapeMarketingData",
-    description="Scrapes & indexes marketing data based on user prompt",
-    func=scrape_marketing_data  # regular function with proper name
+    description="Scrapes & indexes marketing data based on user prompt"
 )
 
 search_tool = Tool(
     type="function",
+    func=search_index,
     name="SearchIndex",
-    description="Searches indexed documents for insights",
-    func=search_index
+    description="Searches indexed documents for insights"
 )
 
-# Create the agent with tools
+# --- Step 3: Initialize the LLM ---
+llm = Groq(
+    id="deepseek-r1-distill-llama-70b",  # check if model exists
+    api_key=os.getenv("GROQ_API_KEY")
+)
+
+# --- Step 4: Create the agent ---
 marketing_agent = Agent(
     name="Marketing Research Agent",
-    
-    model=Groq(id="deepseek-r1-distill-llama-70b"),
+    model=llm,
     instructions=(
         "You are a marketing research assistant. "
-        "Your job is to fetch and summarize the latest marketing data using the provided scraping & IR tools."
+        "Use the scraping and IR tools to fetch and summarize marketing data."
     ),
     tools=[scrape_tool, search_tool]
 )
 
-# Run the agent with a prompt
-response = marketing_agent.run(
+# --- Step 5: Run the agent ---
+prompt = (
     "Get me the latest 2025 digital marketing spend forecasts in Asia "
     "and summarize the top insights."
 )
-print(response)
+
+for chunk in marketing_agent.run(prompt):
+    print(chunk)
