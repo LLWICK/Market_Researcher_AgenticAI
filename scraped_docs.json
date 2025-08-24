@@ -1,8 +1,9 @@
 {
-  "indexed": 2,
-  "query": "Summarize Tesla stock insights upto 2025",
+  "indexed": 3,
+  "query": "Top EV car market comparisons",
   "examples": [
-    "META_TITLE_QUOTE",
-    "Electric Vehicle Outlook 2025"
+    "Electric Vehicle Sales Review Q4-2024",
+    "Electric Vehicle Sales Review Q1-2025",
+    "Mahindra, MG Challenge Tata Motors' EV Lead as India’s Electric Car Market Grows 52% in May"
   ]
 }

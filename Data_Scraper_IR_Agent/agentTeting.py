@@ -47,5 +47,5 @@ def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
 
 # --- Example usage ---
 if __name__ == "__main__":
-    summary = research_agent("Summarize Tesla stock insights upto 2025")
+    summary = research_agent("Top EV car market comparisons")
     print(summary)
