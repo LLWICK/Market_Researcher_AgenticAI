@@ -27,8 +27,7 @@ def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
     for title in docs_data.get("examples", []):
         context_text += f"- {title}\n"
 
-    # --- Step 5: Initialize Phi LLM ---
-    #llm = Groq(model="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"))
+  
 
     # --- Step 6: Create agent ---
     agent = Agent(
@@ -37,7 +36,8 @@ def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
         instructions=(
             "You are a research assistant. You have access to the following pre-scraped documents:\n"
             f"{context_text}\n"
-            "Answer the user query based only on this information."
+            "Answer the user query based only on this information.",
+            "Give response according to a json format"
         )
     )
 
@@ -47,5 +47,5 @@ def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
 
 # --- Example usage ---
 if __name__ == "__main__":
-    summary = research_agent("Summarize Tesla stock insights for 2025")
+    summary = research_agent("Summarize Tesla stock insights upto 2025")
     print(summary)
