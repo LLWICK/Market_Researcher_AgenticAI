@@ -6,54 +6,44 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Step 1: Python functions must have proper __name__
+# --- Step 1: Define Python functions ---
 def scrape_marketing_data(prompt: str):
     return collect_and_index(prompt, k_search=15, k_index=8)
-
-scrape_marketing_data.__name__ = "scrape_marketing_data"  # explicit name
 
 def search_index(query: str):
     return ir_search(query)[:5]
 
-search_index.__name__ = "search_index"  # explicit name
-
-# --- Step 2: Wrap as Tools with type="function" ---
+# --- Step 2: Wrap them as Tools ---
 scrape_tool = Tool(
-    type="function",  # required by Groq
+    type="function",
     func=scrape_marketing_data,
-    name="ScrapeMarketingData",
+    name="scrape_marketing_data",   # must match function.__name__
     description="Scrapes & indexes marketing data based on user prompt"
 )
 
 search_tool = Tool(
     type="function",
     func=search_index,
-    name="SearchIndex",
+    name="search_index",
     description="Searches indexed documents for insights"
 )
 
-# --- Step 3: Initialize the LLM ---
+# --- Step 3: Only init LLM here ---
 llm = Groq(
-    id="deepseek-r1-distill-llama-70b",  # check if model exists
+    id="deepseek-r1-distill-llama-70b",
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-# --- Step 4: Create the agent ---
+# --- Step 4: Create the Agent ---
 marketing_agent = Agent(
     name="Marketing Research Agent",
     model=llm,
-    instructions=(
-        "You are a marketing research assistant. "
-        "Use the scraping and IR tools to fetch and summarize marketing data."
-    ),
-    tools=[scrape_tool, search_tool]
+    instructions="You are a marketing research assistant. Use the scraping and IR tools.",
+    tools=[scrape_tool, search_tool]   # ✅ Tools go here, not in Groq()
 )
 
-# --- Step 5: Run the agent ---
-prompt = (
-    "Get me the latest 2025 digital marketing spend forecasts in Asia "
-    "and summarize the top insights."
-)
+# --- Step 5: Run the Agent ---
+prompt = "Get me the latest 2025 digital marketing spend forecasts in Asia and summarize top insights."
 
 for chunk in marketing_agent.run(prompt):
-    print(chunk)
+    print(chunk, end="")
