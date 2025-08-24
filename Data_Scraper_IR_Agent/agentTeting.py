@@ -1,59 +1,51 @@
-from phi.agent import Agent, Tool
-from phi.model.groq import Groq
-from DataScraperIR import collect_and_index, ir_search
+import json
 import os
-from dotenv import load_dotenv
+from DataScraperIR import collect_and_index, ir_search
+from phi.agent import Agent
+from phi.model.groq import Groq
 
-load_dotenv()
+def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
+    """
+    Scrapes data for the query, saves to JSON, then runs the Phi agent
+    over the pre-scraped content and returns the summary.
+    """
 
-# --- Step 1: Python functions must have proper __name__
-def scrape_marketing_data(prompt: str):
-    return collect_and_index(prompt, k_search=15, k_index=8)
+    # --- Step 1: Scrape & index ---
+    print(f"Scraping data for query: {query}")
+    scrape_result = collect_and_index(query, k_search=10, k_index=6)
 
-scrape_marketing_data.__name__ = "scrape_marketing_data"  # explicit name
+    # --- Step 2: Save scraped data to JSON ---
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(scrape_result, f, ensure_ascii=False, indent=2)
 
-def search_index(query: str):
-    return ir_search(query)[:5]
+    # --- Step 3: Load the saved data ---
+    with open(json_file, "r", encoding="utf-8") as f:
+        docs_data = json.load(f)
 
-search_index.__name__ = "search_index"  # explicit name
+    # --- Step 4: Prepare context for the agent ---
+    context_text = ""
+    for title in docs_data.get("examples", []):
+        context_text += f"- {title}\n"
 
-# --- Step 2: Wrap as Tools with type="function" ---
-scrape_tool = Tool(
-    type="function",  # required by Groq
-    func=scrape_marketing_data,
-    name="ScrapeMarketingData",
-    description="Scrapes & indexes marketing data based on user prompt"
-)
+  
 
-search_tool = Tool(
-    type="function",
-    func=search_index,
-    name="SearchIndex",
-    description="Searches indexed documents for insights"
-)
+    # --- Step 6: Create agent ---
+    agent = Agent(
+        name="LocalFileAgent",
+        model = Groq(id="deepseek-r1-distill-llama-70b"),
+        instructions=(
+            "You are a research assistant. You have access to the following pre-scraped documents:\n"
+            f"{context_text}\n"
+            "Answer the user query based only on this information.",
+            "Give response according to a json format"
+        )
+    )
 
-# --- Step 3: Initialize the LLM ---
-llm = Groq(
-    id="deepseek-r1-distill-llama-70b",  # check if model exists
-    api_key=os.getenv("GROQ_API_KEY")
-)
+    # --- Step 7: Run agent ---
+    response = agent.run(query)
+    return response
 
-# --- Step 4: Create the agent ---
-marketing_agent = Agent(
-    name="Marketing Research Agent",
-    model=llm,
-    instructions=(
-        "You are a marketing research assistant. "
-        "Use the scraping and IR tools to fetch and summarize marketing data."
-    ),
-    tools=[scrape_tool, search_tool]
-)
-
-# --- Step 5: Run the agent ---
-prompt = (
-    "Get me the latest 2025 digital marketing spend forecasts in Asia "
-    "and summarize the top insights."
-)
-
-for chunk in marketing_agent.run(prompt):
-    print(chunk)
+# --- Example usage ---
+if __name__ == "__main__":
+    summary = research_agent("Summarize Tesla stock insights upto 2025")
+    print(summary)

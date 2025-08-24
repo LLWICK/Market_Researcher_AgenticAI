@@ -203,16 +203,16 @@ for h in hits[:5]:
 
 """ # Step 1: Scrape and index relevant docs
 result = collect_and_index(
-    "Digital marketing trends 2025 social media advertising spend statistics",
+    "Tesla stock market stats upto 2025 and competitors of tesla",
     k_search=15, k_index=8
 )
 print(result)   # shows what was indexed
 
 # Step 2: Search inside the indexed data
-hits = ir_search("advertising spend on TikTok and Instagram 2025")
+hits = ir_search("Competitors of Tesla comparison")
 for h in hits[:5]:
-    print(h) 
- """
+    print(h)  """
+
 
 
 """ from phi.agent import Agent, Tool
