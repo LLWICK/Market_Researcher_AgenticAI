@@ -1,0 +1,7 @@
+{
+  "indexed": 1,
+  "query": "Summarize Tesla stock insights for 2025",
+  "examples": [
+    "META_TITLE_QUOTE"
+  ]
+}

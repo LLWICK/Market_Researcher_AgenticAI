@@ -1,90 +1,51 @@
-import requests
-from bs4 import BeautifulSoup
-from phi.assistant import Assistant
-from phi.tools.toolkit import Toolkit
-#from phi.llm.openai import OpenAIChat
-from pydantic import BaseModel, Field
 import json
-import logging
+import os
+from DataScraperIR import collect_and_index, ir_search
+from phi.agent import Agent
 from phi.model.groq import Groq
-from phi.model.ollama import Ollama
 
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-class DataScraperTools(Toolkit):
+def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
     """
-    A collection of tools for the Data Scraper Agent.
+    Scrapes data for the query, saves to JSON, then runs the Phi agent
+    over the pre-scraped content and returns the summary.
     """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.register(self.scrape_website)
-        self.register(self.preprocess_data)
 
-    def scrape_website(self, url: str) -> str:
-        """
-        Scrapes a website and returns the content.
-        This function performs web scraping and returns the main text content.
-        """
-        logging.info(f"Scraping content from URL: {url}")
-        try:
-            # Add headers to mimic a browser
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-            response = requests.get(url, headers=headers)
-            response.raise_for_status() # Raise an error for bad status codes
-            soup = BeautifulSoup(response.text, 'html.parser')
+    # --- Step 1: Scrape & index ---
+    print(f"Scraping data for query: {query}")
+    scrape_result = collect_and_index(query, k_search=10, k_index=6)
 
-            # Extract text from common tags, like paragraphs and headers
-            text_content = ' '.join(p.get_text() for p in soup.find_all(['p', 'h1', 'h2', 'h3']))
-            logging.info(f"Scraping successful. Extracted {len(text_content)} characters.")
+    # --- Step 2: Save scraped data to JSON ---
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(scrape_result, f, ensure_ascii=False, indent=2)
 
-            # Placeholder for security: Input sanitization
-            # In a real-world scenario, you would sanitize the scraped data to prevent XSS or other vulnerabilities.
+    # --- Step 3: Load the saved data ---
+    with open(json_file, "r", encoding="utf-8") as f:
+        docs_data = json.load(f)
 
-            return text_content[:2000] # Return a truncated version for a demo
-        except requests.RequestException as e:
-            logging.error(f"Error scraping {url}: {e}")
-            return f"Error: Could not scrape content from {url}. Reason: {e}"
+    # --- Step 4: Prepare context for the agent ---
+    context_text = ""
+    for title in docs_data.get("examples", []):
+        context_text += f"- {title}\n"
 
-    def preprocess_data(self, raw_data: str) -> str:
-        """
-        Cleans and preprocesses raw, scraped text data.
-        This is a placeholder for NLP cleaning tasks like removing stopwords,
-        tokenization, and handling special characters.
-        """
-        logging.info("Preprocessing raw data...")
-        # Placeholder for data cleaning (e.g., removing HTML tags, extra spaces)
-        cleaned_data = " ".join(raw_data.split())
-        logging.info("Data preprocessing complete.")
-        return cleaned_data
+    # --- Step 5: Initialize Phi LLM ---
+    #llm = Groq(model="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"))
 
-class DataScraperAgent(Assistant):
-    """
-    Agent responsible for scraping and preprocessing data.
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.name = "Data Scraper Agent"
-        self.role = "Acts as the system's data collector and retriever."
-        self.llm = Groq(id="deepseek-r1-distill-llama-70b") # Use your preferred LLM
-        self.tools = [DataScraperTools()]
-        self.instructions = [
-            "You are a data scraper and information retrieval agent.",
-            "Your main function is to scrape content from a given URL.",
-            "Use the `scrape_website` tool to retrieve data.",
-            "After scraping, use the `preprocess_data` tool to clean the text.",
-            "Return the preprocessed, cleaned data as a JSON object with a 'scraped_data' key.",
-            "If the URL is invalid, return an error message."
-        ]
-    
-    def run_with_url(self, url: str) -> str:
-        """
-        Executes the agent's full scraping and processing workflow for a given URL.
-        """
-        logging.info(f"Starting DataScraperAgent workflow for URL: {url}")
-        prompt = f"Scrape and preprocess the content from the following URL: {url}"
-        response = self.print_response(prompt, stream=False)
-        return response
+    # --- Step 6: Create agent ---
+    agent = Agent(
+        name="LocalFileAgent",
+        model = Groq(id="deepseek-r1-distill-llama-70b"),
+        instructions=(
+            "You are a research assistant. You have access to the following pre-scraped documents:\n"
+            f"{context_text}\n"
+            "Answer the user query based only on this information."
+        )
+    )
+
+    # --- Step 7: Run agent ---
+    response = agent.run(query)
+    return response
+
+# --- Example usage ---
+if __name__ == "__main__":
+    summary = research_agent("Summarize Nvidia stock insights for 2025")
+    print(summary)

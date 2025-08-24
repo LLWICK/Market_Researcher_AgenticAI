@@ -203,13 +203,13 @@ for h in hits[:5]:
 
 # Step 1: Scrape and index relevant docs
 result = collect_and_index(
-    "Nvdia stock market stats upto 2025",
+    "Tesla stock market stats upto 2025 and competitors of tesla",
     k_search=15, k_index=8
 )
 print(result)   # shows what was indexed
 
 # Step 2: Search inside the indexed data
-hits = ir_search("Competitors of nvidia")
+hits = ir_search("Competitors of Tesla comparison")
 for h in hits[:5]:
     print(h) 
 
