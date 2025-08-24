@@ -195,7 +195,62 @@ def collect_and_index(query: str, k_search: int = 10, k_index: int = 8) -> Dict:
 
 
 
-print(collect_and_index("Nvidia stock prices upto 2025 give me the response in jason format", k_search=10, k_index=6))
+""" print(collect_and_index("Nvidia stock prices upto 2025 give me the response in jason format", k_search=10, k_index=6))
 hits = ir_search("NVIDIA earnings GPU AI data center")
 for h in hits[:5]:
-    print(f"- {h['title']} -> {h['url']} [{h['source']}] (score={h['score']:.2f})")
+    print(f"- {h['title']} -> {h['url']} [{h['source']}] (score={h['score']:.2f})") """
+
+
+""" # Step 1: Scrape and index relevant docs
+result = collect_and_index(
+    "Digital marketing trends 2025 social media advertising spend statistics",
+    k_search=15, k_index=8
+)
+print(result)   # shows what was indexed
+
+# Step 2: Search inside the indexed data
+hits = ir_search("advertising spend on TikTok and Instagram 2025")
+for h in hits[:5]:
+    print(h) 
+ """
+
+
+""" from phi.agent import Agent, Tool
+from phi.model.groq import Groq
+import os
+
+# Initialize Phi LLM
+llm = Groq(model="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"))
+
+# Wrap Python functions as Tools
+scrape_tool = Tool(
+    type="python",
+    name="ScrapeMarketingData",
+    description="Scrapes & indexes marketing data based on user prompt",
+    func=lambda prompt: collect_and_index(prompt, k_search=15, k_index=8)
+)
+
+search_tool = Tool(
+    type="python",
+    name="SearchIndex",
+    description="Searches indexed documents for insights",
+    func=lambda query: ir_search(query)[:5]
+)
+
+# Create the agent with tools
+marketing_agent = Agent(
+    name="Marketing Research Agent",
+    model=llm,
+    instructions=(
+        "You are a marketing research assistant. "
+        "Your job is to fetch and summarize the latest marketing data using the provided scraping & IR tools."
+    ),
+    tools=[scrape_tool, search_tool]
+)
+
+# Run the agent with a prompt
+response = marketing_agent.run(
+    "Get me the latest 2025 digital marketing spend forecasts in Asia "
+    "and summarize the top insights."
+)
+print(response) """
