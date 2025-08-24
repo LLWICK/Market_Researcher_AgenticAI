@@ -1,7 +1,8 @@
 {
-  "indexed": 1,
-  "query": "Summarize Tesla stock insights for 2025",
+  "indexed": 2,
+  "query": "Summarize Tesla stock insights upto 2025",
   "examples": [
-    "META_TITLE_QUOTE"
+    "META_TITLE_QUOTE",
+    "Electric Vehicle Outlook 2025"
   ]
 }

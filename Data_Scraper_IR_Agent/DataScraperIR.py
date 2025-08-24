@@ -201,7 +201,7 @@ for h in hits[:5]:
     print(f"- {h['title']} -> {h['url']} [{h['source']}] (score={h['score']:.2f})") """
 
 
-# Step 1: Scrape and index relevant docs
+""" # Step 1: Scrape and index relevant docs
 result = collect_and_index(
     "Tesla stock market stats upto 2025 and competitors of tesla",
     k_search=15, k_index=8
@@ -211,7 +211,7 @@ print(result)   # shows what was indexed
 # Step 2: Search inside the indexed data
 hits = ir_search("Competitors of Tesla comparison")
 for h in hits[:5]:
-    print(h) 
+    print(h)  """
 
 
 
