@@ -4,7 +4,7 @@ from DataScraperIR import collect_and_index, ir_search
 from phi.agent import Agent
 from phi.model.groq import Groq
 
-def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
+def Scraper_agent(query: str, json_file: str = "scraped_docs.json") -> str:
     """
     Scrapes data for the query, saves to JSON, then runs the Phi agent
     over the pre-scraped content and returns the summary.
@@ -47,5 +47,5 @@ def research_agent(query: str, json_file: str = "scraped_docs.json") -> str:
 
 # --- Example usage ---
 if __name__ == "__main__":
-    summary = research_agent("Top EV car market comparisons")
+    summary = Scraper_agent("Top EV car market comparisons")
     print(summary)
