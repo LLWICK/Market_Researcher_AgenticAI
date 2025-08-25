@@ -46,6 +46,6 @@ def Scraper_agent(query: str, json_file: str = "scraped_docs.json") -> str:
     return response
 
 # --- Example usage ---
-if __name__ == "__main__":
+""" if __name__ == "__main__":
     summary = Scraper_agent("Top EV car market comparisons")
-    print(summary)
+    print(summary) """
