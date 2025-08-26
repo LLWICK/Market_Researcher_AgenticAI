@@ -1,9 +1,11 @@
 {
-  "indexed": 3,
-  "query": "What are the top competitors in EV market? Should we enter this market?",
+  "indexed": 6,
+  "query": "What are the top competitors in Laptop market? Should we enter this market?",
   "examples": [
-    "The Shift East: How China’s EV Boom Powers Its Tech Rise",
-    "50 NEW Artificial Intelligence Statistics (July 2025)",
-    "Market Penetration: What It Is and Strategies to Increase It"
+    "The 4 Best Business Laptops of 2025 | Reviews by Wirecutter",
+    "The Best Handheld Gaming PCs to Take Your Games on the Go",
+    "The best HP laptop in 2025: our top picks from this trusted laptop brand",
+    "I review over 200 laptops each year, and these are the best laptops of 2025",
+    "Best Gaming Laptops 2025: Tested, benchmarked and reviewed"
   ]
 }
