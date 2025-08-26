@@ -97,7 +97,7 @@ def MarketResearch_agent(scraper_output: dict) -> str:
 # -------------------------
 # Pipeline Execution
 # -------------------------
-if __name__ == "__main__":
+#if __name__ == "__main__":
     # Step 1: Run Data Scraper Agent
     scraper_output = DataScraper_agent("What are the top competitors in Laptop market?")
 
@@ -108,4 +108,4 @@ if __name__ == "__main__":
     print(scraper_output["summary"])
 
     print("\n--- Market Research Insights ---\n") """
-    print(scraper_output)
+   # print(scraper_output)
