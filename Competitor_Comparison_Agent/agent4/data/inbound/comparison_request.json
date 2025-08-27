@@ -1,0 +1,6 @@
+{
+  "market": "Agentic-AI Ops",
+  "primary_kpis": ["MAU","NPS"],
+  "feature_weights": {"api": 0.4, "sso": 0.3, "analytics": 0.3},
+  "price_weight": 0.2, "kpi_weight": 0.5, "feature_weight": 0.3
+}
