@@ -16,6 +16,7 @@ from whoosh.qparser import MultifieldParser
 import urllib.robotparser as robotparser
 from pathlib import Path
 
+
 load_dotenv()
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 BASE = Path(os.getcwd())

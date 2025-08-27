@@ -95,3 +95,9 @@ if __name__ == "__main__":
 
     print("\n--- Market Research Insights ---\n")
     print(insights)
+""" 
+    with open("pipeline_output.json", "w", encoding="utf-8") as f:
+        json.dump({
+            "scraper": scraper_output,
+            "research_insights": insights
+        }, f, indent=2, ensure_ascii=False) """
