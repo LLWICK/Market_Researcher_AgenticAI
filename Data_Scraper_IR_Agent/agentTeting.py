@@ -4,6 +4,7 @@ from DataScraperIR import collect_and_index, ir_search
 from phi.agent import Agent
 from phi.model.ollama import Ollama
 from dotenv import load_dotenv
+from phi.tools.yfinance import YFinanceTools
 
 load_dotenv()
 
@@ -37,8 +38,12 @@ def DataScraper_agent(query: str, json_file: str = "scraped_docs.json") -> dict:
         instructions=(
             "You are a Data Scraper Agent. "
             "Summarize the following pre-scraped documents clearly and concisely:\n\n"
-            f"{context_text}"
-        )
+            f"{context_text}",
+            "Also use given tools to get market insights"
+        ),
+        #tools= [YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
+        show_tool_calls=True,
+        markdown=True,
     )
 
     summary = agent.run(query)
@@ -94,7 +99,7 @@ if __name__ == "__main__":
     print(scraper_output["summary"])
 
     print("\n--- Market Research Insights ---\n")
-    print(insights)
+    print(insights) 
 """ 
     with open("pipeline_output.json", "w", encoding="utf-8") as f:
         json.dump({

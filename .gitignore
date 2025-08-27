@@ -1,2 +1,5 @@
 .env
 .venv
+storage
+_pycache_
+Data_Scraper_IR_Agent/__pycache_

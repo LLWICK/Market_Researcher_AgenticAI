@@ -92,7 +92,7 @@ def TrendAnalyzer_agent(scraper_output: dict) -> dict:
 # Pipeline Execution
 # -------------------------
 if __name__ == "__main__":
-    query = "What are the top competitors in Laptop market?"
+    query = "What are the top competitors in Real estate business in Sri Lanka? Is it ideal for me to go into the business?"
 
     # Step 1: Scraper
     scraper_output = DataScraper_agent(query)
