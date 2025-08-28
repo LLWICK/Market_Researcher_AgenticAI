@@ -90,7 +90,7 @@ def MarketResearch_agent(scraper_output: dict) -> str:
 # -------------------------
 if __name__ == "__main__":
     # Step 1: Scraper Agent
-    scraper_output = DataScraper_agent("What are the top competitors in Laptop market?")
+    scraper_output = DataScraper_agent("What are the top competitors in Smartphone market?")
 
     # Step 2: Market Research Agent
     insights = MarketResearch_agent(scraper_output)
