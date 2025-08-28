@@ -35,7 +35,8 @@ def Summarizer_agent(scraper_output: dict) -> dict:
 
     agent = Agent(
         name="SummarizerAgent",
-        model=Ollama(id="llama3.2"),
+        #model=Ollama(id="llama3.2"),
+        model=Groq(id="openai/gpt-oss-20b"),
         instructions=(
             "You are a Summarizer Agent. Based on the following documents and search results, "
             "summarize the key competitors and market highlights.\n"
@@ -58,7 +59,7 @@ def MarketResearch_agent(summary_output: dict, query: str) -> dict:
 
     agent = Agent(
         name="MarketResearchAgent",
-        model=Groq(id="llama-3.3-70b-versatile"),
+        model=Groq(id="openai/gpt-oss-20b"),
         #model=Ollama(id="llama3.2"),
         instructions=(
             "You are a Market Research Analyst. Based on the summary and sources, "
@@ -87,7 +88,8 @@ def TrendAnalyzer_agent(scraper_output: dict) -> dict:
 
     agent = Agent(
         name="TrendAnalyzerAgent",
-        model=Ollama(id="llama3.2"),
+        #model=Ollama(id="llama3.2"),
+        model=Groq(id="openai/gpt-oss-20b"),
         instructions=(
             "You are a Trend Analyzer. Based on the scraped documents, "
             "identify emerging trends, competitor movements, and shifts in consumer demand."
@@ -109,49 +111,39 @@ def TrendAnalyzer_agent(scraper_output: dict) -> dict:
 # Pipeline Execution
 # -------------------------
 if __name__ == "__main__":
-    query = "What are the top competitors in Real estate business in Sri Lanka? Is it ideal for me to go into the business?"
+    query = "What are the latest trends in online grocery delivery services?"
 
     # Step 1: Scraper
     scraper_output = DataScraper_agent(query)
+    print("\n=== Step 1: Data Scraper Output ===")
+    print(json.dumps(scraper_output, indent=2, ensure_ascii=False))
 
     # Step 2: Summarizer
     summary_output = Summarizer_agent(scraper_output)
+    print("\n=== Step 2: Summarizer Output ===")
+    print(json.dumps(summary_output, indent=2, ensure_ascii=False))
 
     # Step 3: Market Research
     research_output = MarketResearch_agent(summary_output, query)
+    print("\n=== Step 3: Market Research Insights ===")
+    print(research_output["research_insights"])
 
     # Step 4: Trend Analyzer
     trend_output = TrendAnalyzer_agent(scraper_output)
+    print("\n=== Step 4: Trend Analyzer Output ===")
+    print(trend_output["trends"])
 
-    # Final combined output
+    # Save pipeline results (JSON safe)
     final_output = {
-        "scraper": scraper_output,
-        "summary": summary_output,
-        "research": research_output,
-        "trends": trend_output
+        "scraper": {k: str(v) for k, v in scraper_output.items()},
+        "summary": {k: str(v) for k, v in summary_output.items()},
+        "research": {k: str(v) for k, v in research_output.items()},
+        "trends": {k: str(v) for k, v in trend_output.items()}
     }
 
-    # Save pipeline results
     with open("pipeline_output.json", "w", encoding="utf-8") as f:
         json.dump(final_output, f, indent=2, ensure_ascii=False)
 
-    # -------------------------
-    # Display outputs neatly
-    # -------------------------
-    print("\n================ Pipeline Outputs ================\n")
-
-    print("--- 1. Data Scraper Output ---")
-    print(json.dumps(scraper_output, indent=2, ensure_ascii=False))
-
-    print("\n--- 2. Summarizer Output ---")
-    print(summary_output["summary"])
-
-    print("\n--- 3. Market Research Insights ---")
-    print(research_output["research_insights"])
-
-    print("\n--- 4. Trend Analysis ---")
-    print(trend_output["trends"])
-
-    print("\n=================================================\n")
+    print("\n✅ All agent outputs have been saved to pipeline_output.json")
 
 
