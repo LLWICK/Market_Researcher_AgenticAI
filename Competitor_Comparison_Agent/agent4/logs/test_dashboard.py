@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Import dashboard functions
-from dashboard import (
+from Market_Researcher_AgenticAI.dashboard import (
     load_comparison_data,
     create_competitor_dataframe,
     create_feature_analysis_dataframe,
