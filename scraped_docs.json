@@ -1,8 +1,7 @@
 {
-  "indexed": 2,
-  "query": "What are the top competitors in Smartphone market?",
+  "indexed": 1,
+  "query": "What are the top competitors in Real estate business in Sri Lanka? Is it ideal for me to go into the business?",
   "examples": [
-    "Top 5 smartphone brands in Q1 2025, based on global market share",
-    "Mainland China’s smartphone market records 4% full-year growth in 2024, led by vivo"
+    "Artificial intelligence - implications for real estate"
   ]
 }

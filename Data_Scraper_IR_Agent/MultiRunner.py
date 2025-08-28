@@ -4,6 +4,7 @@ from DataScraperIR import collect_and_index, ir_search
 from phi.agent import Agent
 from phi.model.ollama import Ollama
 from dotenv import load_dotenv
+from phi.model.groq import Groq
 
 load_dotenv()
 
@@ -30,7 +31,6 @@ def Summarizer_agent(scraper_output: dict) -> dict:
     query = scraper_output["query"]
     hits = scraper_output["ir_hits"]
 
-    # Build context from IR
     context_text = "\n".join([f"- {h['title']} ({h['source']})" for h in hits])
 
     agent = Agent(
@@ -43,8 +43,10 @@ def Summarizer_agent(scraper_output: dict) -> dict:
         )
     )
 
-    summary = agent.run(query)
-    return {"summary": summary, "ir_hits": hits}
+    response = agent.run(query)
+    summary_text = str(response) if not hasattr(response, "output_text") else response.output_text
+
+    return {"summary": summary_text, "ir_hits": hits}
 
 
 def MarketResearch_agent(summary_output: dict, query: str) -> dict:
@@ -56,38 +58,53 @@ def MarketResearch_agent(summary_output: dict, query: str) -> dict:
 
     agent = Agent(
         name="MarketResearchAgent",
-        model=Ollama(id="llama3.2"),
+        model=Groq(id="llama-3.3-70b-versatile"),
+        #model=Ollama(id="llama3.2"),
         instructions=(
             "You are a Market Research Analyst. Based on the summary and sources, "
             "analyze competitors, opportunities, risks, and recommend market strategies."
         )
     )
 
-    insights = agent.run(context)
-    return {"research_insights": insights}
+    response = agent.run(context)
+    insights_text = str(response) if not hasattr(response, "output_text") else response.output_text
+
+    return {"research_insights": insights_text}
+
 
 
 def TrendAnalyzer_agent(scraper_output: dict) -> dict:
-    docs = scraper_output.get("scraped_docs", [])
-    
-    if not isinstance(docs, list):
-        print("[TrendAnalyzer] Warning: scraped_docs is not a list")
-        return {"trend_analysis": "No docs to analyze", "trends": ""}
+    scraped_docs = scraper_output.get("ir_hits", [])
 
-    selected_docs = docs[:10]
+    # ✅ Ensure scraped_docs is always a list of strings
+    if not isinstance(scraped_docs, list):
+        print("[TrendAnalyzer] Warning: scraped_docs is not a list. Forcing conversion.")
+        scraped_docs = [str(scraped_docs)]
+    else:
+        scraped_docs = [str(doc) for doc in scraped_docs]
 
-    trends_text = "\n".join([
-        f"- {doc.get('title', 'No Title')} ({doc.get('url', 'No URL')})"
-        for doc in selected_docs
-    ])
+    context = "\n".join(scraped_docs)
 
-    return {
-        "trend_analysis": f"Analyzed {len(selected_docs)} documents",
-        "trends": trends_text
-    }
+    agent = Agent(
+        name="TrendAnalyzerAgent",
+        model=Ollama(id="llama3.2"),
+        instructions=(
+            "You are a Trend Analyzer. Based on the scraped documents, "
+            "identify emerging trends, competitor movements, and shifts in consumer demand."
+        )
+    )
+
+    response = agent.run(context)
+    trends_text = str(response) if not hasattr(response, "output_text") else response.output_text
+
+    return {"trends": trends_text}
 
 
 
+
+# -------------------------
+# Pipeline Execution
+# -------------------------
 # -------------------------
 # Pipeline Execution
 # -------------------------
@@ -106,7 +123,7 @@ if __name__ == "__main__":
     # Step 4: Trend Analyzer
     trend_output = TrendAnalyzer_agent(scraper_output)
 
-    # Save pipeline results
+    # Final combined output
     final_output = {
         "scraper": scraper_output,
         "summary": summary_output,
@@ -114,12 +131,27 @@ if __name__ == "__main__":
         "trends": trend_output
     }
 
-    #with open("pipeline_output.json", "w", encoding="utf-8") as f:
-     #   json.dump(final_output, f, indent=2, ensure_ascii=False)
+    # Save pipeline results
+    with open("pipeline_output.json", "w", encoding="utf-8") as f:
+        json.dump(final_output, f, indent=2, ensure_ascii=False)
 
-    print("\n--- Market Research Insights ---\n")
+    # -------------------------
+    # Display outputs neatly
+    # -------------------------
+    print("\n================ Pipeline Outputs ================\n")
+
+    print("--- 1. Data Scraper Output ---")
+    print(json.dumps(scraper_output, indent=2, ensure_ascii=False))
+
+    print("\n--- 2. Summarizer Output ---")
+    print(summary_output["summary"])
+
+    print("\n--- 3. Market Research Insights ---")
     print(research_output["research_insights"])
 
-    print("\n--- Emerging Trends ---\n")
+    print("\n--- 4. Trend Analysis ---")
     print(trend_output["trends"])
+
+    print("\n=================================================\n")
+
 
