@@ -5,3 +5,5 @@ _pycache_
 Data_Scraper_IR_Agent/__pycache_
 pipeline_output.json
 scraped_docs.json
+.toe
+.seg

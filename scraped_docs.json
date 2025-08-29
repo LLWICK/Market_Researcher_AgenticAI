@@ -1,7 +1,5 @@
 {
-  "indexed": 1,
-  "query": "What are the top competitors in Real estate business in Sri Lanka? Is it ideal for me to go into the business?",
-  "examples": [
-    "Artificial intelligence - implications for real estate"
-  ]
+  "indexed": 0,
+  "query": "What are the top competitors in Smartphone market?",
+  "examples": []
 }
