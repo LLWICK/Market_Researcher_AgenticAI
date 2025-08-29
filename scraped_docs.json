@@ -1,9 +1,7 @@
 {
-  "indexed": 3,
-  "query": "What are the top competitors in EV market? Should we enter this market?",
+  "indexed": 1,
+  "query": "What are the top competitors in Real estate business in Sri Lanka? Is it ideal for me to go into the business?",
   "examples": [
-    "The Shift East: How China’s EV Boom Powers Its Tech Rise",
-    "50 NEW Artificial Intelligence Statistics (July 2025)",
-    "Market Penetration: What It Is and Strategies to Increase It"
+    "Artificial intelligence - implications for real estate"
   ]
 }

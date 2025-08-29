@@ -15,6 +15,8 @@ from whoosh.analysis import StemmingAnalyzer
 from whoosh.qparser import MultifieldParser
 import urllib.robotparser as robotparser
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 load_dotenv()
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
@@ -182,14 +184,22 @@ def ir_search(query: str, limit: int = 10) -> List[Dict]:
 def collect_and_index(query: str, k_search: int = 10, k_index: int = 8) -> Dict:
     results = serper_news(query, num=k_search)
     docs = []
-    for it in results[:k_index]:
-        try:
-            d = make_doc(str(it.url), title_hint=it.title, source=it.source, date_str=it.date)
-            if d:
-                docs.append(d)
-                time.sleep(1.0)  # be polite
-        except Exception as e:
-            log.warning(f"Skip {it.url}: {e}")
+
+    with ThreadPoolExecutor(max_workers=5) as executor:   # tune workers (3–8 safe)
+        future_to_url = {
+            executor.submit(make_doc, str(it.url), it.title, it.source, it.date): it.url
+            for it in results[:k_index]
+        }
+
+        for future in as_completed(future_to_url):
+            url = future_to_url[future]
+            try:
+                d = future.result()
+                if d:
+                    docs.append(d)
+            except Exception as e:
+                log.warning(f"Skip {url}: {e}")
+
     n = index_docs(docs)
     return {"indexed": n, "query": query, "examples": [d.title for d in docs[:5]]}
 
@@ -201,7 +211,7 @@ for h in hits[:5]:
     print(f"- {h['title']} -> {h['url']} [{h['source']}] (score={h['score']:.2f})") """
 
 
-""" # Step 1: Scrape and index relevant docs
+"""  # Step 1: Scrape and index relevant docs
 result = collect_and_index(
     "Tesla stock market stats upto 2025 and competitors of tesla",
     k_search=15, k_index=8
@@ -211,7 +221,7 @@ print(result)   # shows what was indexed
 # Step 2: Search inside the indexed data
 hits = ir_search("Competitors of Tesla comparison")
 for h in hits[:5]:
-    print(h)  """
+    print(h)   """
 
 
 

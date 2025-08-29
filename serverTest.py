@@ -2,13 +2,13 @@
 from fastapi import FastAPI
 import uvicorn
 import json
-from Data_Scraper_IR_Agent.agentTeting import Scraper_agent
+from Data_Scraper_IR_Agent.agentTeting import DataScraper_agent
 
 app = FastAPI()
 
 @app.post("/scrape")
 def scrape(query: str):
-    result = Scraper_agent(query)
+    result = DataScraper_agent(query)
     return result  # already JSON structured
 
 if __name__ == "__main__":
