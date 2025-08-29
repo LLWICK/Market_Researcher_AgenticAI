@@ -249,7 +249,7 @@ def collect_and_index(query: str, k_search: int = 10, k_index: int = 5):
     4. Return JSON summary
     """
     # 🔎 Step 1: search
-    from DataScraperIR import serper_news   # import your search func
+       # import your search func
     results = serper_news(query, num=k_search)
 
     urls = [r["link"] for r in results if "link" in r][:k_index]
