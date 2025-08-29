@@ -7,6 +7,7 @@ from typing import List, Dict
 from phi.agent import Agent
 from phi.llm.ollama import Ollama
 
+
 # Handle imports for both direct execution and module import
 try:
     from .schemas import CompetitorProfile, TrendSignals, ComparisonRequest, ComparisonResult
