@@ -181,27 +181,109 @@ def ir_search(query: str, limit: int = 10) -> List[Dict]:
         } for r in rs]
 
 # ---- Orchestrate: search -> scrape -> index
-def collect_and_index(query: str, k_search: int = 10, k_index: int = 8) -> Dict:
+import aiohttp, asyncio
+from whoosh import index
+from whoosh.fields import Schema, TEXT, ID
+from whoosh.analysis import StemmingAnalyzer
+from whoosh.writing import AsyncWriter
+import os, json
+from trafilatura import extract
+
+# 🔧 Schema (same as before)
+schema = Schema(
+    title=TEXT(stored=True, analyzer=StemmingAnalyzer()),
+    content=TEXT(stored=True, analyzer=StemmingAnalyzer()),
+    url=ID(stored=True, unique=True)
+)
+
+INDEX_DIR = "indexdir"
+CACHE_FILE = "cache.json"
+TIMEOUT = 6  # faster fallback
+
+# -----------------------
+# ✅ Cache helpers
+# -----------------------
+def _load_cache():
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def _save_cache(cache):
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2, ensure_ascii=False)
+
+# -----------------------
+# ✅ Async fetch
+# -----------------------
+async def fetch_async(url: str, session: aiohttp.ClientSession) -> str | None:
+    try:
+        async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=TIMEOUT) as r:
+            if r.status == 200:
+                return await r.text()
+            return None
+    except Exception:
+        return None
+
+async def scrape_all_async(urls: list[str]) -> dict[str, str]:
+    results = {}
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_async(url, session) for url in urls]
+        html_list = await asyncio.gather(*tasks, return_exceptions=True)
+        for url, html in zip(urls, html_list):
+            if isinstance(html, Exception) or html is None:
+                continue
+            text = extract(html)  # trafilatura parse
+            if text:
+                results[url] = text
+    return results
+
+# -----------------------
+# ✅ Collect + Index
+# -----------------------
+def collect_and_index(query: str, k_search: int = 10, k_index: int = 5):
+    """
+    1. Search via Serper (or your IR search tool)
+    2. Async scrape + extract
+    3. Cache + Whoosh indexing
+    4. Return JSON summary
+    """
+    # 🔎 Step 1: search
+       # import your search func
     results = serper_news(query, num=k_search)
-    docs = []
 
-    with ThreadPoolExecutor(max_workers=5) as executor:   # tune workers (3–8 safe)
-        future_to_url = {
-            executor.submit(make_doc, str(it.url), it.title, it.source, it.date): it.url
-            for it in results[:k_index]
-        }
+    urls = [r["link"] for r in results if "link" in r][:k_index]
+    cache = _load_cache()
 
-        for future in as_completed(future_to_url):
-            url = future_to_url[future]
-            try:
-                d = future.result()
-                if d:
-                    docs.append(d)
-            except Exception as e:
-                log.warning(f"Skip {url}: {e}")
+    # Use cache if available
+    fresh_urls = [u for u in urls if u not in cache]
 
-    n = index_docs(docs)
-    return {"indexed": n, "query": query, "examples": [d.title for d in docs[:5]]}
+    # 🔎 Step 2: scrape new docs
+    if fresh_urls:
+        scraped = asyncio.run(scrape_all_async(fresh_urls))
+        cache.update(scraped)
+        _save_cache(cache)
+
+    # 🔎 Step 3: Whoosh indexing
+    if not os.path.exists(INDEX_DIR):
+        os.mkdir(INDEX_DIR)
+        ix = index.create_in(INDEX_DIR, schema)
+    else:
+        ix = index.open_dir(INDEX_DIR)
+
+    writer = AsyncWriter(ix)
+    for url in urls:
+        if url in cache:
+            writer.update_document(title=url, content=cache[url], url=url)
+    writer.commit()
+
+    # 🔎 Step 4: return structured output
+    return {
+        "query": query,
+        "indexed": len([u for u in urls if u in cache]),
+        "docs": urls
+    }
+
 
 
 

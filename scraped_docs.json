@@ -1,7 +1,5 @@
 {
-  "indexed": 1,
-  "query": "What are the top competitors in Real estate business in Sri Lanka? Is it ideal for me to go into the business?",
-  "examples": [
-    "Artificial intelligence - implications for real estate"
-  ]
+  "query": "What are the latest trends in online grocery delivery services?",
+  "indexed": 0,
+  "docs": []
 }
