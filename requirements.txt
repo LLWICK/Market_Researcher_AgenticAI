@@ -1,0 +1,6 @@
+pydantic
+python-dotenv
+trafilatura
+tenacity
+whoosh
+requests
