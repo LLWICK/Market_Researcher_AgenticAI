@@ -1,26 +1,56 @@
-# utils.py
-def clean_response(resp):
+import re
+
+def clean_output(text: str) -> str:
+    if not text:
+        return ""
+    # Remove chain-of-thought style markers
+    text = re.sub(r"(?i)(thoughts?:|reasoning:|analysis:).*", "", text)
+    # Remove angle-bracket reasoning tags
+    text = re.sub(r"<.*?>", "", text)
+    # Remove extra markdown symbols
+    text = re.sub(r"[*_#>`~-]+", "", text)
+    # Collapse multiple spaces/newlines
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+from typing import Union, List, Dict
+
+def extract_clean_text(messages: Union[str, List, Dict]) -> str:
     """
-    Extracts clean text from phi/LLM responses.
-    Works whether resp is RunResponse, dict, or plain str.
+    Extract the final assistant-generated text from messy agent outputs.
+    Handles raw dicts, lists of messages, or raw event strings.
     """
-    # Case 1: response has `.output_text`
-    if hasattr(resp, "output_text"):
-        return resp.output_text.strip() 
+    if not messages:
+        return ""
 
-    # Case 2: response has `.content`
-    if hasattr(resp, "content") and isinstance(resp.content, str):
-        return resp.content.strip()
+    text = ""
 
-    # Case 3: response is dict with 'summary' or 'insights' etc.
-    if isinstance(resp, dict):
-        for key in ["summary", "insights", "trends", "content"]:
-            if key in resp:
-                return str(resp[key]).strip()
+    # Case 1: If it's already a dict with role/content
+    if isinstance(messages, dict) and "content" in messages:
+        text = messages["content"]
 
-    # Case 4: raw string
-    if isinstance(resp, str):
-        return resp.strip()
+    # Case 2: If it's a list of messages
+    elif isinstance(messages, list):
+        assistant_msgs = [m.get("content", "") for m in messages if m.get("role") == "assistant"]
+        text = " ".join(assistant_msgs)
 
-    # Fallback: dump as string
-    return str(resp)
+    # Case 3: If it's a big raw string
+    elif isinstance(messages, str):
+        # Try to capture the last assistant content
+        match = re.findall(r"role='assistant'.*?content=\"(.*?)\"", messages, flags=re.S)
+        if match:
+            text = match[-1]  # take last assistant block
+        else:
+            # fallback: take everything after the last 'assistant'
+            if "assistant" in messages:
+                text = messages.split("assistant")[-1]
+
+    # Final cleanup
+    text = re.sub(r"(?s)metrics=.*", "", text)        # drop metrics blobs
+    text = re.sub(r"\s+", " ", text).strip()          # collapse whitespace
+    text = re.sub(r"\\n", "\n", text)                 # unescape newlines
+    text = re.sub(r"(?i)(thoughts?:|reasoning:).*", "", text)  # drop CoT markers
+
+    return text
+
