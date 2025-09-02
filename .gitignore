@@ -1,7 +1,8 @@
 .env
 .venv
 storage
-__pycache__/
-Data_Scraper_IR_Agent/__pycache__/
+__pycache__
+Data_Scraper_IR_Agent/__pycache__
 pipeline_output.json
 scraped_docs.json
+indexdir
