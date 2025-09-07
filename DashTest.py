@@ -1,30 +1,100 @@
 # streamlit_app.py
 import streamlit as st
-from AgentTeam import DataScraper_agent, Summarizer_agent, MarketResearch_agent
+import re
+import json
+import matplotlib.pyplot as plt
+import pandas as pd
+from AgentTeam import DataScraper_agent, Summarizer_agent, MarketResearch_agent, TrendAnalyzer_agent
 
-st.title("🧠 Multi-Agent Market Research Pipeline")
+# ---------------------------
+# Helpers
+# ---------------------------
+def clean_text(text: str) -> str:
+    """Remove unwanted characters and extra whitespace"""
+    if not text:
+        return "No data available."
+    text = re.sub(r"[^\x00-\x7F]+", "", text)  # Remove non-ASCII
+    text = re.sub(r"\n\s*\n+", "\n\n", text)   # Normalize newlines
+    return text.strip()
 
-query = st.text_input("Enter your market research query:", "What are the latest trends in online grocery delivery services?")
+def extract_statistics_from_trends(trends: str):
+    """
+    Try to parse structured statistics from trend text.
+    Expecting something like JSON or percentage patterns inside the LLM output.
+    """
+    stats = {}
+    try:
+        # Look for JSON in the text
+        json_match = re.search(r"\{.*\}", trends, re.DOTALL)
+        if json_match:
+            stats = json.loads(json_match.group())
+        else:
+            # Fallback: extract percentage stats from text
+            matches = re.findall(r"([A-Za-z ]+):?\s?(\d+)%", trends)
+            stats = {m[0].strip(): int(m[1]) for m in matches}
+    except Exception as e:
+        print(f"[extract_statistics_from_trends] Failed: {e}")
+    return stats
 
-if st.button("Run Pipeline"):
-    with st.spinner("Scraping data..."):
-        msg1 = DataScraper_agent(query)
-        st.subheader("🔍 Step 1: Data Scraper")
-        st.json(msg1.to_dict())
+# ---------------------------
+# Streamlit UI
+# ---------------------------
+st.set_page_config(page_title="Market Insights Dashboard", layout="wide")
+st.title("📊 Multi-Agent Market Research System")
 
-    with st.spinner("Summarizing insights..."):
-        msg2 = Summarizer_agent(msg1)
-        st.subheader("📝 Step 2: Summarizer")
-        st.json(msg2.to_dict())
+query = st.text_input("Enter your query:", "What are the latest trends in online grocery delivery services?")
 
-    with st.spinner("Analyzing market research..."):
-        msg3 = MarketResearch_agent(msg2)
-        st.subheader("📊 Step 3: Market Research")
-        st.json(msg3.to_dict())
+if st.button("Run Agents") and query.strip():
+    # ---------------------------
+    # Data Scraper
+    # ---------------------------
+    with st.spinner("Running Data Scraper..."):
+        scraper_out = DataScraper_agent(query)
+        st.subheader("🔎 Data Scraper Output (Preview)")
+        for i, doc in enumerate(scraper_out.get("docs", [])[:5]):
+            st.text_area(f"Doc {i+1}: {doc[:500]}...", doc[:500], height=150)
 
-    """ with st.spinner("Analyzing trends..."):
-        msg4 = TrendAnalyzer_agent(msg1)
-        st.subheader("📈 Step 4: Trend Analyzer")
-        st.json(msg4.to_dict()) """
+    # ---------------------------
+    # Summarizer
+    # ---------------------------
+    with st.spinner("Running Summarizer..."):
+        summary_out = Summarizer_agent()
+        st.subheader("📝 Summarizer Output")
+        st.text_area("Summary", clean_text(summary_out.get("summary", "")), height=200)
 
-    st.success("✅ Pipeline completed!")
+    # ---------------------------
+    # Market Research
+    # ---------------------------
+    with st.spinner("Running Market Research..."):
+        research_out = MarketResearch_agent()
+        st.subheader("📈 Market Research Insights")
+        st.text_area("Insights", clean_text(research_out.get("insights", "")), height=200)
+
+    # ---------------------------
+    # Trend Analyzer
+    # ---------------------------
+    with st.spinner("Running Trend Analyzer..."):
+        trend_out = TrendAnalyzer_agent()
+        trends_text = clean_text(trend_out.get("trends", ""))
+
+        st.subheader("📊 Trend Analyzer Trends")
+        st.text_area("Trends", trends_text, height=250)
+
+        # ---------------------------
+        # Charts Section
+        # ---------------------------
+        stats = extract_statistics_from_trends(trends_text)
+        if stats:
+            st.subheader("📈 Trend Statistics (Charts)")
+            df = pd.DataFrame(list(stats.items()), columns=["Category", "Value"])
+
+            # Bar chart
+            st.bar_chart(df.set_index("Category"))
+
+            # Pie chart
+            fig, ax = plt.subplots()
+            ax.pie(df["Value"], labels=df["Category"], autopct="%1.1f%%", startangle=90)
+            ax.axis("equal")
+            st.pyplot(fig)
+        else:
+            st.info("No structured statistics found in the trend analysis output.")
