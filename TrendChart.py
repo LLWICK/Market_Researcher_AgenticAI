@@ -390,14 +390,24 @@ def run_pipeline(query: str, trend_out: str = "", perf_out: str = ""):
 
     return {"scope": scope, "trend": trend, "tickers": tickers, "performance": perf}
 
+
+
+def run_pipeline_b(query: str):
+    scope = analyze_query_scope(query)
+    trend = TrendChart_agent()
+    tickers = TickerResolver_agent()
+    perf = MarketPerformance_agent()
+    return {"scope": scope, "trend": trend, "tickers": tickers, "performance": perf}
+
 if __name__ == "__main__":
-    test_queries = [
-        #"Renewable energy storage market 2023",
-        #"EV charging competitors in Asia",
-        "Cloud security vendors in the US"
-    ]
-    for query in test_queries:
-        print("\n" + "="*80)
-        print(f"Running pipeline for query: {query}")
-        results = run_pipeline(query)
-        print(json.dumps(results, indent=2))
+    query = "Cloud security vendors in the US"
+
+    res = run_pipeline_b(query)
+
+
+    print(res)
+
+   
+    """ print(f"Running pipeline for query: {query}")
+    results = run_pipeline(query)
+    print(json.dumps(results, indent=2)) """
