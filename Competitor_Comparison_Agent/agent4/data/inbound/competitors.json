@@ -1,0 +1,16 @@
+[
+  {
+    "name": "CompA",
+    "website": "https://a.example",
+    "kpis": {"MAU": 2.1, "NPS": 42},
+    "pricing": {"basic": 19, "pro": 49},
+    "features": {"api": true, "sso": false, "analytics": true}
+  },
+  {
+    "name": "CompB",
+    "website": "https://b.example",
+    "kpis": {"MAU": 1.5, "NPS": 55},
+    "pricing": {"basic": 15, "pro": 59},
+    "features": {"api": true, "sso": true, "analytics": false}
+  }
+]

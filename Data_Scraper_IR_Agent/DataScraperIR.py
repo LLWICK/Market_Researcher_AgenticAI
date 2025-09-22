@@ -1,6 +1,3 @@
-# Testing IR retrieve code base
-
-# agents/data_scraper_ir.py
 from __future__ import annotations
 import os, time, json, hashlib, urllib.parse, logging, re, requests
 from typing import List, Dict, Optional, Iterable
@@ -15,8 +12,6 @@ from whoosh.analysis import StemmingAnalyzer
 from whoosh.qparser import MultifieldParser
 import urllib.robotparser as robotparser
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
 
 load_dotenv()
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
@@ -112,11 +107,14 @@ class ScrapeError(Exception): pass
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(1, 2, 6), reraise=True)
 def fetch_html(url: str) -> str:
-    if not _valid_url(url): raise ScrapeError("Invalid/disallowed URL")
-    if not _robots_ok(url): raise ScrapeError("robots.txt disallows")
+    if not _valid_url(url):
+        raise ScrapeError("Invalid/disallowed URL")
+    # disable robots.txt strictness if you want:
+    # if not _robots_ok(url): log.warning(f"robots.txt disallows {url}, skipping")
     r = requests.get(url, headers={"User-Agent": UA}, timeout=TIMEOUT)
     r.raise_for_status()
     return r.text
+
 
 def extract_text(html: str, url: str) -> Optional[str]:
     txt = trafilatura.extract(html, url=url, include_comments=False, include_tables=False)
@@ -148,9 +146,16 @@ def _ensure_index():
         source=TEXT(stored=True),
         published_at=DATETIME(stored=True),
     )
-    if not os.listdir(INDEX_DIR):
+    try:
+        if not os.listdir(INDEX_DIR):
+            return create_in(INDEX_DIR, schema)
+        return open_dir(INDEX_DIR)
+    except Exception as e:
+        log.warning(f"Recreating index due to error: {e}")
+        for f in os.listdir(INDEX_DIR):
+            os.remove(INDEX_DIR / f)
         return create_in(INDEX_DIR, schema)
-    return open_dir(INDEX_DIR)
+
 
 def index_docs(docs: Iterable[Document]) -> int:
     ix = _ensure_index()
@@ -184,24 +189,21 @@ def ir_search(query: str, limit: int = 10) -> List[Dict]:
 def collect_and_index(query: str, k_search: int = 10, k_index: int = 8) -> Dict:
     results = serper_news(query, num=k_search)
     docs = []
-
-    with ThreadPoolExecutor(max_workers=5) as executor:   # tune workers (3–8 safe)
-        future_to_url = {
-            executor.submit(make_doc, str(it.url), it.title, it.source, it.date): it.url
-            for it in results[:k_index]
-        }
-
-        for future in as_completed(future_to_url):
-            url = future_to_url[future]
-            try:
-                d = future.result()
-                if d:
-                    docs.append(d)
-            except Exception as e:
-                log.warning(f"Skip {url}: {e}")
-
+    for it in results[:k_index]:
+        try:
+            d = make_doc(str(it.url), title_hint=it.title, source=it.source, date_str=it.date)
+            if d:
+                docs.append(d)
+                time.sleep(1.0)  # be polite
+        except Exception as e:
+            log.warning(f"Skip {it.url}: {e}")
     n = index_docs(docs)
-    return {"indexed": n, "query": query, "examples": [d.title for d in docs[:5]]}
+    return {
+        "indexed": n,
+        "query": query,
+        "docs": [d.dict() for d in docs],  # include full documents
+        "examples": [d.title for d in docs[:5]]
+    }
 
 
 
@@ -213,15 +215,27 @@ for h in hits[:5]:
 
 """  # Step 1: Scrape and index relevant docs
 result = collect_and_index(
-    "Tesla stock market stats upto 2025 and competitors of tesla",
+    "Smart Phone market stats upto 2025",
     k_search=15, k_index=8
 )
 print(result)   # shows what was indexed
 
 # Step 2: Search inside the indexed data
-hits = ir_search("Competitors of Tesla comparison")
+hits = ir_search("Competitors comparison in smartphone industry")
 for h in hits[:5]:
-    print(h)   """
+    print(h) """  
+
+
+""" results = serper_news("Smart Phone market stats upto 2025")
+print("Results:", results)
+
+docs = [make_doc(str(it.url), title_hint=it.title, source=it.source, date_str=it.date)
+        for it in results[:8]]
+print("Docs:", docs)
+
+n = index_docs([d for d in docs if d])
+print("Indexed:", n) """
+
 
 
 
