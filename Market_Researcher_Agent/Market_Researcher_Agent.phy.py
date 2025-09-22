@@ -37,7 +37,7 @@ load_dotenv()
 # Groq/OpenAI LLM Configuration
 # ---------------------------
 market_research_agent = Agent(
-    model=Groq(model="mixtral-8x7b-32768", api_key=os.getenv("GROQ_API_KEY")),
+    model=Groq(id="deepseek-r1-distill-llama-70b", api_key=os.getenv("GROQ_API_KEY")),
     markdown=False,
     instructions=(
         "You are a Market Researcher. You will receive documents related to a market topic. "
