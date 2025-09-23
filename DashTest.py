@@ -5,6 +5,7 @@ import json
 import matplotlib.pyplot as plt
 import pandas as pd
 from AgentTeam import DataScraper_agent, Summarizer_agent, MarketResearch_agent, TrendAnalyzer_agent, CompetitorComparison_agent
+from  TrendChart import run_pipeline_b  
 
 # ---------------------------
 # Helpers
@@ -160,5 +161,41 @@ if st.button("Run Agents") and query.strip():
                 st.line_chart(df_comp.set_index("Competitor")["GrowthRate"])
         else:
             st.info("No structured competitor data found. Showing only raw analysis text above.")
+
+
+    
+    with st.spinner("Running pipeline..."):
+        results = run_pipeline_b(query)
+
+        # --- Scope ---
+        """ st.header("📌 Query Scope")
+        st.json(results["scope"]) """
+
+        # --- Trend Chart ---
+        st.header("📊 Trend Chart (Top 5 Competitors)")
+        trend = results.get("trend", {})
+        #st.json(trend)
+
+        if trend and "charts" in trend and len(trend["charts"]) > 0:
+            chart_data = trend["charts"][0]["series"][0]["data"]
+            if chart_data:
+                df = pd.DataFrame(chart_data, columns=["Company", "Market Value"])
+                st.bar_chart(df.set_index("Company"))
+
+        # --- Resolved Tickers ---
+        #st.header("🏷️ Resolved Tickers")
+        #st.json(results["tickers"])
+
+        # --- Market Performance ---
+        #st.header("📈 Market Performance (Rebased Index)")
+        perf = results.get("performance", {})
+        #st.json(perf)
+
+        if perf and "timeseries" in perf and perf["timeseries"].get("series"):
+            df = pd.DataFrame({
+                s["name"]: s["data"]
+                for s in perf["timeseries"]["series"]
+            }, index=perf["timeseries"]["x"])
+            st.line_chart(df)
 
 
