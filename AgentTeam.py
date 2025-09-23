@@ -33,7 +33,33 @@ def chunk_text(text: str, max_words: int = 500) -> list[str]:
 summarizer_agent = Agent(
     name="SummarizerAgent",
     model=Groq(id="openai/gpt-oss-20b"),
-    instructions="Summarize documents concisely and clearly to 100-200 words. Extract  Market insights to pass into Market researcher agent,trend analyzer agent  and competitor comparison agent."
+    instructions="""
+You are a **Market Insight Summarizer Agent**.
+
+Your task:
+1. Read the provided documents.
+2. Write a clear, concise **market overview** (150–200 words).
+3. Extract and highlight **only information relevant for market research**:
+   - Key **market size / growth trends** (CAGR, YoY growth, demand shifts).
+   - Key **competitors** (companies, brands, or products).
+   - **Opportunities** (emerging markets, tech advances, consumer demand).
+   - **Risks / challenges** (supply chain issues, regulations, costs).
+   - Any **quantifiable metrics** (percentages, revenue figures, unit counts).
+
+Formatting:
+- Start with a short **executive summary (2–3 sentences)**.
+- Then provide **bullet points** under these sections:
+   • Market Trends  
+   • Competitors  
+   • Opportunities  
+   • Risks / Challenges  
+   • Key Metrics  
+
+Rules:
+- Keep total output ≤ 200 words.
+- If no data is available for a section, write: "Not mentioned".
+- Avoid generic filler text.
+"""
 )
 
 market_research_agent = Agent(
