@@ -168,13 +168,13 @@ if st.button("Run Agents") and query.strip():
         results = run_pipeline_b(query)
 
         # --- Scope ---
-        st.header("📌 Query Scope")
-        st.json(results["scope"])
+        """ st.header("📌 Query Scope")
+        st.json(results["scope"]) """
 
         # --- Trend Chart ---
         st.header("📊 Trend Chart (Top 5 Competitors)")
         trend = results.get("trend", {})
-        st.json(trend)
+        #st.json(trend)
 
         if trend and "charts" in trend and len(trend["charts"]) > 0:
             chart_data = trend["charts"][0]["series"][0]["data"]
@@ -183,13 +183,13 @@ if st.button("Run Agents") and query.strip():
                 st.bar_chart(df.set_index("Company"))
 
         # --- Resolved Tickers ---
-        st.header("🏷️ Resolved Tickers")
-        st.json(results["tickers"])
+        #st.header("🏷️ Resolved Tickers")
+        #st.json(results["tickers"])
 
         # --- Market Performance ---
-        st.header("📈 Market Performance (Rebased Index)")
+        #st.header("📈 Market Performance (Rebased Index)")
         perf = results.get("performance", {})
-        st.json(perf)
+        #st.json(perf)
 
         if perf and "timeseries" in perf and perf["timeseries"].get("series"):
             df = pd.DataFrame({
