@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from phi.tools.yfinance import YFinanceTools
 import json
 from utills.scope_utils import _cap5, _salvage_json, _fallback_extract
+from phi.tools.duckduckgo import DuckDuckGo
 from utills.ta_helpers import (
     _agent_text,
     _cap5_any,
@@ -61,7 +62,7 @@ Rules: "global" if no geo; region only→"regional"; any country→"country"; on
 trend_chart_agent = Agent(
     name="TrendChartAgent",
     model=Groq(id="deepseek-r1-distill-llama-70b"),
-    tools=[YFinanceTools()],
+    tools=[YFinanceTools(), DuckDuckGo()],
     instructions="""
 You receive a prior agent's SCOPE JSON via the protocol. Your job is to emit JSON ONLY for chart-ready data based on that scope.
 
@@ -150,7 +151,7 @@ Rules:
 market_performance_agent = Agent(
     name="MarketPerformanceAgent",
     model=Groq(id="deepseek-r1-distill-llama-70b"),
-    tools=[YFinanceTools()],
+    tools=[YFinanceTools(),DuckDuckGo()],
     instructions="""
 You receive the SCOPE JSON from QueryScopeAgent and the prior TrendChartAgent output via protocol. Produce JSON ONLY containing a multi-series time series of market PERFORMANCE (price-index), not market cap.
 

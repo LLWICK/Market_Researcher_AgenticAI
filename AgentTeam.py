@@ -79,35 +79,6 @@ trend_analyzer_agent = Agent(
 )
 
 
-trend_stats_agent = Agent(
-    name="TrendStatsAgent",
-    model=Groq(id="deepseek-r1-distill-llama-70b"),
-    instructions="""From the given market insights, extract **3–6 quantifiable statistics**.  
-Always return ONLY valid JSON in this format:
-
-[
-  {"metric": "EV sales growth", "value": 12, "unit": "% CAGR"},
-  {"metric": "Battery cost reduction", "value": 8, "unit": "% YoY"},
-  {"metric": "Charging stations expansion", "value": 1500, "unit": "units"}
-]
-
-No text outside JSON.
-"""
-)
-
-
-CompetitorComparison_agent = Agent(
-    name="Competitor Comparison Agent",
-    role="Analyze competitors in the given industry",
-    model=Groq(id="mixtral-8x7b-32768"),
-    instructions=[
-        "Given an industry query, identify top 3–5 competitors.",
-        "Provide approximate figures for: Sales (in millions), MarketShare (%), GrowthRate (%).",
-        "Return the results as JSON array of objects, e.g.: "
-        "[{'Competitor': 'X', 'Sales': 1200, 'MarketShare': 25, 'GrowthRate': 8}, {...}]",
-        "If exact numbers aren't available, provide estimates."
-    ]
-)
 
 # ---------------------------
 # Agent Functions
@@ -256,21 +227,7 @@ def TrendAnalyzer_agent():
 
 
 
-import json
 
-def TrendStats_agent():
-    """Receive market insights, extract structured stats for charts"""
-    data = protocol.receive("TrendAnalyzerAgent") or {"insights": ""}
-    raw_output = ""
-    try:
-        raw_output = get_text(trend_stats_agent.run(data.get("insights", "")))
-        stats = json.loads(raw_output)
-    except Exception as e:
-        print(f"[TrendStatsAgent] Error parsing stats: {e}")
-        stats = []
-    
-    print("[TrendStatsAgent] Stats extracted successfully.")
-    return {"stats": stats, "raw": raw_output}
 
 
 # ---------------------------
