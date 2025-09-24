@@ -2,6 +2,49 @@ import json
 import datetime
 import re as _re
 
+from datetime import date
+
+def _ensure_month_format(period: dict) -> dict:
+    """Normalize {'from':'YYYY'|'YYYY-MM','to':'YYYY'|'YYYY-MM'} to 'YYYY-MM' bounds."""
+    if not isinstance(period, dict):
+        return {"from": "", "to": ""}
+    p = dict(period)
+    try:
+        f = str(p.get("from", "")); t = str(p.get("to", ""))
+        if len(f) == 4: p["from"] = f + "-01"
+        if len(t) == 4: p["to"]   = t + "-12"
+        # tolerate already-monthly strings
+    except Exception:
+        pass
+    return p
+
+
+def _default_event_period() -> dict:
+    """Current-year-to-date window as {'from':'YYYY-01-01','to':'YYYY-MM-DD'} with from<=to."""
+    today = date.today()
+    return {"from": f"{today.year}-01-01", "to": today.strftime("%Y-%m-%d")}
+
+def build_top5_snapshot(scope: dict, resolved: list[dict]) -> dict:
+    sector = (scope.get("sectors") or ["Market"])[0]
+    geo = (scope.get("countries") or scope.get("regions") or ["Global"])[0]
+    title = f"Top 5 competitors in {geo} {sector}"
+    names = [r["name"] for r in resolved][:5]
+    # Market values (USD) can be added later if you decide to fetch caps via tools
+    return {
+        "charts": [{
+            "id": "top5_competitors",
+            "title": title,
+            "type": "bar",
+            "unit": "USD",
+            "series": [{"name": "Market Value", "data": [[n, None] for n in names]}],
+            "notes": "Values omitted (deployment constraint)"
+        }],
+        "period": {},
+        "assumptions": [],
+        "data_gaps": []
+    }
+
+
 # Robustly extract text from Agent.run(...) results across variants
 def _agent_text(run_result) -> str:
     try:
