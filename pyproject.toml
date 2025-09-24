@@ -26,4 +26,6 @@ dependencies = [
     "tenacity>=9.1.2",
     "yfinance>=0.2.40",
     "altair>=5",
+    "phidata>=2.7.10",
+    "matplotlib>=3.10.6",
 ]
