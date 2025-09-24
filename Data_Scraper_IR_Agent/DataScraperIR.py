@@ -68,9 +68,18 @@ def _cache_path(u: str) -> str:
     h = hashlib.sha256(u.encode()).hexdigest()[:24]
     return os.path.join(CACHE_DIR, f"{h}.json")
 
+""" def _load_cache(u: str) -> Optional[dict]:
+    p = _cache_path(u)
+    return json.load(open(p, "r", encoding="utf-8")) if os.path.exists(p) else None """
+
 def _load_cache(u: str) -> Optional[dict]:
     p = _cache_path(u)
-    return json.load(open(p, "r", encoding="utf-8")) if os.path.exists(p) else None
+    if os.path.exists(p):
+        log.info(f"Cache hit for {u}")
+        return json.load(open(p, "r", encoding="utf-8"))
+    log.info(f"Cache miss for {u}")
+    return None
+
 
 def _save_cache(u: str, d: dict) -> None:
     json.dump(d, open(_cache_path(u), "w", encoding="utf-8"), ensure_ascii=False, indent=2)
