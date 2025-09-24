@@ -1,6 +1,3 @@
-# Testing IR retrieve code base
-
-# agents/data_scraper_ir.py
 from __future__ import annotations
 import os, time, json, hashlib, urllib.parse, logging, re, requests
 from typing import List, Dict, Optional, Iterable
@@ -15,8 +12,6 @@ from whoosh.analysis import StemmingAnalyzer
 from whoosh.qparser import MultifieldParser
 import urllib.robotparser as robotparser
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
 
 load_dotenv()
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
@@ -73,9 +68,18 @@ def _cache_path(u: str) -> str:
     h = hashlib.sha256(u.encode()).hexdigest()[:24]
     return os.path.join(CACHE_DIR, f"{h}.json")
 
+""" def _load_cache(u: str) -> Optional[dict]:
+    p = _cache_path(u)
+    return json.load(open(p, "r", encoding="utf-8")) if os.path.exists(p) else None """
+
 def _load_cache(u: str) -> Optional[dict]:
     p = _cache_path(u)
-    return json.load(open(p, "r", encoding="utf-8")) if os.path.exists(p) else None
+    if os.path.exists(p):
+        log.info(f"Cache hit for {u}")
+        return json.load(open(p, "r", encoding="utf-8"))
+    log.info(f"Cache miss for {u}")
+    return None
+
 
 def _save_cache(u: str, d: dict) -> None:
     json.dump(d, open(_cache_path(u), "w", encoding="utf-8"), ensure_ascii=False, indent=2)
@@ -112,11 +116,14 @@ class ScrapeError(Exception): pass
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(1, 2, 6), reraise=True)
 def fetch_html(url: str) -> str:
-    if not _valid_url(url): raise ScrapeError("Invalid/disallowed URL")
-    if not _robots_ok(url): raise ScrapeError("robots.txt disallows")
+    if not _valid_url(url):
+        raise ScrapeError("Invalid/disallowed URL")
+    # disable robots.txt strictness if you want:
+    # if not _robots_ok(url): log.warning(f"robots.txt disallows {url}, skipping")
     r = requests.get(url, headers={"User-Agent": UA}, timeout=TIMEOUT)
     r.raise_for_status()
     return r.text
+
 
 def extract_text(html: str, url: str) -> Optional[str]:
     txt = trafilatura.extract(html, url=url, include_comments=False, include_tables=False)
@@ -148,9 +155,16 @@ def _ensure_index():
         source=TEXT(stored=True),
         published_at=DATETIME(stored=True),
     )
-    if not os.listdir(INDEX_DIR):
+    try:
+        if not os.listdir(INDEX_DIR):
+            return create_in(INDEX_DIR, schema)
+        return open_dir(INDEX_DIR)
+    except Exception as e:
+        log.warning(f"Recreating index due to error: {e}")
+        for f in os.listdir(INDEX_DIR):
+            os.remove(INDEX_DIR / f)
         return create_in(INDEX_DIR, schema)
-    return open_dir(INDEX_DIR)
+
 
 def index_docs(docs: Iterable[Document]) -> int:
     ix = _ensure_index()
@@ -181,109 +195,24 @@ def ir_search(query: str, limit: int = 10) -> List[Dict]:
         } for r in rs]
 
 # ---- Orchestrate: search -> scrape -> index
-import aiohttp, asyncio
-from whoosh import index
-from whoosh.fields import Schema, TEXT, ID
-from whoosh.analysis import StemmingAnalyzer
-from whoosh.writing import AsyncWriter
-import os, json
-from trafilatura import extract
-
-# 🔧 Schema (same as before)
-schema = Schema(
-    title=TEXT(stored=True, analyzer=StemmingAnalyzer()),
-    content=TEXT(stored=True, analyzer=StemmingAnalyzer()),
-    url=ID(stored=True, unique=True)
-)
-
-INDEX_DIR = "indexdir"
-CACHE_FILE = "cache.json"
-TIMEOUT = 6  # faster fallback
-
-# -----------------------
-# ✅ Cache helpers
-# -----------------------
-def _load_cache():
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def _save_cache(cache):
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(cache, f, indent=2, ensure_ascii=False)
-
-# -----------------------
-# ✅ Async fetch
-# -----------------------
-async def fetch_async(url: str, session: aiohttp.ClientSession) -> str | None:
-    try:
-        async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=TIMEOUT) as r:
-            if r.status == 200:
-                return await r.text()
-            return None
-    except Exception:
-        return None
-
-async def scrape_all_async(urls: list[str]) -> dict[str, str]:
-    results = {}
-    async with aiohttp.ClientSession() as session:
-        tasks = [fetch_async(url, session) for url in urls]
-        html_list = await asyncio.gather(*tasks, return_exceptions=True)
-        for url, html in zip(urls, html_list):
-            if isinstance(html, Exception) or html is None:
-                continue
-            text = extract(html)  # trafilatura parse
-            if text:
-                results[url] = text
-    return results
-
-# -----------------------
-# ✅ Collect + Index
-# -----------------------
-def collect_and_index(query: str, k_search: int = 10, k_index: int = 5):
-    """
-    1. Search via Serper (or your IR search tool)
-    2. Async scrape + extract
-    3. Cache + Whoosh indexing
-    4. Return JSON summary
-    """
-    # 🔎 Step 1: search
-       # import your search func
+def collect_and_index(query: str, k_search: int = 10, k_index: int = 8) -> Dict:
     results = serper_news(query, num=k_search)
-
-    urls = [r["link"] for r in results if "link" in r][:k_index]
-    cache = _load_cache()
-
-    # Use cache if available
-    fresh_urls = [u for u in urls if u not in cache]
-
-    # 🔎 Step 2: scrape new docs
-    if fresh_urls:
-        scraped = asyncio.run(scrape_all_async(fresh_urls))
-        cache.update(scraped)
-        _save_cache(cache)
-
-    # 🔎 Step 3: Whoosh indexing
-    if not os.path.exists(INDEX_DIR):
-        os.mkdir(INDEX_DIR)
-        ix = index.create_in(INDEX_DIR, schema)
-    else:
-        ix = index.open_dir(INDEX_DIR)
-
-    writer = AsyncWriter(ix)
-    for url in urls:
-        if url in cache:
-            writer.update_document(title=url, content=cache[url], url=url)
-    writer.commit()
-
-    # 🔎 Step 4: return structured output
+    docs = []
+    for it in results[:k_index]:
+        try:
+            d = make_doc(str(it.url), title_hint=it.title, source=it.source, date_str=it.date)
+            if d:
+                docs.append(d)
+                time.sleep(1.0)  # be polite
+        except Exception as e:
+            log.warning(f"Skip {it.url}: {e}")
+    n = index_docs(docs)
     return {
+        "indexed": n,
         "query": query,
-        "indexed": len([u for u in urls if u in cache]),
-        "docs": urls
+        "docs": [d.dict() for d in docs],  # include full documents
+        "examples": [d.title for d in docs[:5]]
     }
-
 
 
 
@@ -295,15 +224,27 @@ for h in hits[:5]:
 
 """  # Step 1: Scrape and index relevant docs
 result = collect_and_index(
-    "Tesla stock market stats upto 2025 and competitors of tesla",
+    "Smart Phone market stats upto 2025",
     k_search=15, k_index=8
 )
 print(result)   # shows what was indexed
 
 # Step 2: Search inside the indexed data
-hits = ir_search("Competitors of Tesla comparison")
+hits = ir_search("Competitors comparison in smartphone industry")
 for h in hits[:5]:
-    print(h)   """
+    print(h) """  
+
+
+""" results = serper_news("Smart Phone market stats upto 2025")
+print("Results:", results)
+
+docs = [make_doc(str(it.url), title_hint=it.title, source=it.source, date_str=it.date)
+        for it in results[:8]]
+print("Docs:", docs)
+
+n = index_docs([d for d in docs if d])
+print("Indexed:", n) """
+
 
 
 

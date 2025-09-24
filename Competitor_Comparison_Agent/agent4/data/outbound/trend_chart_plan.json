@@ -1,0 +1,27 @@
+{
+  "charts": [
+    {
+      "id": "top5_competitors",
+      "title": "Top 5 competitors in COUNTRY Cloud Security",
+      "type": "bar",
+      "unit": "USD",
+      "series": [
+        {
+          "name": "Market Value",
+          "data": []
+        }
+      ],
+      "notes": "Placeholder"
+    }
+  ],
+  "period": {
+    "from": "",
+    "to": ""
+  },
+  "assumptions": [
+    "Model fallback used"
+  ],
+  "data_gaps": [
+    "Need top-5 list and values"
+  ]
+}
