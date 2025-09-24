@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
-from  TrendChart2 import run_pipeline_b   # change `your_module` to your actual filename (e.g. pipeline_b)
+from TrendChart2 import CompetitorTrend_agent, MarketTrendAnalyzer_agent, EventPriceSpike_agent
+from utills.ta_helpers import _altair_timeseries_chart, _salvage_json_text
 import altair as alt
+import numpy as np
 
 st.set_page_config(page_title="Pipeline B Test", layout="wide")
 st.title("🔬 Market Scope → Trend → Tickers → Performance (Pipeline B)")
@@ -42,271 +44,196 @@ def _series_to_df(timeseries: dict) -> pd.DataFrame:
         min_len = n if min_len is None else min(min_len, n)
         data[name] = vals[:n]
     idx = x[: (min_len or len(x))]
-    return pd.DataFrame(data, index=idx)
+    df = pd.DataFrame(data, index=idx)
+    # coerce to numeric; None/strings -> NaN
+    for c in df.columns:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    return df
 
+def _calc_kpis(timeseries: dict) -> dict:
+    """Return simple KPIs: total return, CAGR, best/worst year."""
+    df = _series_to_df(timeseries)
+    if df.empty:
+        return {}
+    # Use first non-NA row as base; work per series then average
+    kpis = {}
+    years = list(df.index)
+    # compute YoY for each series
+    yoy = df.pct_change() * 100.0
+    # choose a representative (first column) for KPI headline
+    rep = df.columns[0]
+    start_val = df[rep].dropna().iloc[0]
+    end_val = df[rep].dropna().iloc[-1]
+    n_years = max(1, len(df.dropna().index) - 1)
+    total_return = ((end_val / start_val) - 1.0) * 100.0 if start_val and end_val else np.nan
+    cagr = ((end_val / start_val) ** (1.0 / n_years) - 1.0) * 100.0 if start_val and end_val else np.nan
+    # best/worst year based on rep series YoY
+    yoy_rep = yoy[rep].dropna()
+    best_year = yoy_rep.idxmax() if not yoy_rep.empty else None
+    worst_year = yoy_rep.idxmin() if not yoy_rep.empty else None
+    return {
+        "rep_series": rep,
+        "total_return_pct": None if pd.isna(total_return) else round(float(total_return), 2),
+        "cagr_pct": None if pd.isna(cagr) else round(float(cagr), 2),
+        "best_year": best_year,
+        "best_year_yoy_pct": None if yoy_rep.empty else round(float(yoy_rep.max()), 2),
+        "worst_year": worst_year,
+        "worst_year_yoy_pct": None if yoy_rep.empty else round(float(yoy_rep.min()), 2),
+    }
 
 # User query
 query = st.text_input("Enter your market query:", "Global Smartphone market")
 
+if st.button("Run(Agents)"):
 
-if st.button("Run Pipeline B"):
-    with st.spinner("Running pipeline..."):
-        results = run_pipeline_b(query)
-        # ---- Summary row ----
-        try:
-            scope = results.get("scope", {}) or {}
-            geo = (scope.get("countries") or scope.get("regions") or ["Global"])[0] if isinstance(scope, dict) else "Global"
-            sectors = ", ".join(scope.get("sectors", [])[:2]) if isinstance(scope, dict) else ""
-            perf = results.get("performance", {}) or {}
-            rt = perf.get("resolved_tickers", []) if isinstance(perf, dict) else []
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Geo", geo)
-            c2.metric("Sector(s)", sectors if sectors else "—")
-            c3.metric("Resolved Tickers", len([r for r in rt if r.get('ticker')]))
-        except Exception:
-            pass
-    # --- Resolved Tickers ---
-    with st.expander("🔤 Major player Tickers", expanded=True):
-        perf = results.get("performance", {}) or {}
-        rt = perf.get("resolved_tickers", []) if isinstance(perf, dict) else []
-        if rt:
-            df_rt = pd.DataFrame([{
-                "Company": r.get("name"),
-                "Ticker": r.get("ticker"),
-                "Exchange": r.get("exchange"),
-                "Confidence": r.get("confidence")
-            } for r in rt])
-            st.dataframe(df_rt, use_container_width=True)
+    st.header("🧠 Trend Charts — Agent Outputs")
+
+    # Competitor Comparison (structured list) + Competitor Trend timeseries
+    with st.expander("🏁 Trend of Major Market Players", expanded=True):
+       
+        # Competitor trend (timeseries JSON comes as a text blob from the agent)
+        with st.spinner("Competitor Trend Analyzer Agent..."):
+            comp_trend_text = CompetitorTrend_agent(query)
+        comp_trend = _salvage_json_text(comp_trend_text)
+        ts_ct = comp_trend.get("timeseries") if isinstance(comp_trend, dict) else {}
+
+        # Show resolved tickers if present
+        rt = comp_trend.get("resolved_tickers") if isinstance(comp_trend, dict) else None
+        if isinstance(rt, list) and rt:
+            try:
+                st.write("**Major Market PLayer Tickers**")
+                df_rt = pd.DataFrame(rt)
+                if "confidence" in df_rt.columns:
+                    df_rt = df_rt.drop(columns=["confidence"])
+                st.dataframe(df_rt, use_container_width=True, hide_index=True)
+            except Exception:
+                pass
+
+        if isinstance(ts_ct, dict) and (ts_ct.get("x") or ts_ct.get("series")):
+            chart = _altair_timeseries_chart(ts_ct, title=ts_ct.get("title","Competitor price movement (rebased)"))
+            if chart is not None:
+                st.altair_chart(chart, use_container_width=True)
+                st.caption("Competitor price movement")
+            else:
+                st.info("Competitor trend: no series.")
         else:
-            st.info("No tickers resolved.")
-    # --- Sector Average Performance (index) ---
-    with st.expander("📈 Sector Average Performance (index)", expanded=True):
-        sp = results.get("sector_performance", {})
-        try:
-            if isinstance(sp, dict) and sp.get("sector_performance"):
-                ts_obj = sp["sector_performance"]
-                df_sp = _series_to_df(ts_obj)
+            st.info("Competitor trend: no data.")
+
+    # Market Trend Analyzer (product vs sector + adoption)
+    with st.expander("📈 Sector Trends & Movements", expanded=True):
+        with st.spinner("Running Market Trend Analyzer Agent..."):
+            market_trend_text = MarketTrendAnalyzer_agent(query)
+            adoption = None
+            try:
+                mt_parsed = _salvage_json_text(market_trend_text)
+                adoption = mt_parsed.get("adoption")
+            except Exception:
+                adoption = None        
+        mt_text = market_trend_text
+        mt = _salvage_json_text(mt_text)
+        sp = mt.get("sector_performance", {}) if isinstance(mt, dict) else {}
+        if sp and isinstance(sp, dict) and (sp.get("x") or sp.get("series")):
+            chart = _altair_timeseries_chart(sp, title=sp.get("title","Sector / product price index (rebased)"))
+            if chart is not None:
+                st.altair_chart(chart, use_container_width=True)
+                # KPIs
+                k = _calc_kpis(sp) or {}
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Total Return (rep series)", f"{k.get('total_return_pct','–')}%")
+                c2.metric("CAGR (rep series)", f"{k.get('cagr_pct','–')}%")
+                c3.metric("Best Year", f"{k.get('best_year','–')}", f"{k.get('best_year_yoy_pct','–')}%")
+                c4.metric("Worst Year", f"{k.get('worst_year','–')}", f"{k.get('worst_year_yoy_pct','–')}%")
+                # Proxies
+                proxies = sp.get("proxies_used", {})
+                chips = []
+                for kx, vx in (proxies or {}).items():
+                    if not vx:
+                        continue
+                    chips.append(f"<span class='chip'><b>{kx.capitalize()}</b>: {vx}</span>")
+                if chips:
+                    st.markdown(" ".join(chips), unsafe_allow_html=True)
+            else:
+                st.info("Market Trend: no series.")
+        else:
+            st.info("Market Trend: no data.")
+
+        # Adoption podiums from MarketTrendAnalyzer agent output
+        ad = mt.get("adoption", {}) if isinstance(mt, dict) else {}
+        ea = ad.get("early_adopters_top3") or []
+        cu = ad.get("current_adopters_top3") or ad.get("current_adopters_top5") or []
+
+        def _name_list_agent(items):
+            names = []
+            for it in items:
+                if isinstance(it, dict):
+                    n = it.get("company") or it.get("region") or it.get("name")
+                    if n:
+                        names.append(str(n))
+            return names[:3]
+
+        early_names = _name_list_agent(ea)
+        current_names = _name_list_agent(cu)
+
+        def _podium_html(title: str, names: list[str]) -> str:
+            ranks = ["gold","silver","bronze"]
+            medals = ["🥇","🥈","🥉"]
+            rows = []
+            for i, n in enumerate(names[:3]):
+                cls = ranks[i] if i < 3 else ""
+                badge = f"{medals[i]} {i+1}"
+                rows.append(f"<div class='rank-item {cls}'><span class='rank-badge'>{badge}</span><span class='rank-name'>{n}</span></div>")
+            if not rows:
+                return "<div class='muted'>No data.</div>"
+            return f"""\n<div class='card'>\n  <h4>{title}<span class='sub'>ranked</span></h4>\n  {''.join(rows)}\n</div>\n"""  # noqa: E501
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(_podium_html("Top 3 Early Customer Base Builders", early_names), unsafe_allow_html=True)
+        with c2:
+            st.markdown(_podium_html("Top 3 Current Customer Base Dominators", current_names), unsafe_allow_html=True)
+
+        # Reasons list (compact)
+        def _reasons(items):
+            out = []
+            for it in items[:3]:
+                if isinstance(it, dict):
+                    name = it.get("company") or it.get("name")
+                    why = it.get("why")
+                    if name and why:
+                        out.append(f"- **{name}** — {why}")
+            return "\n".join(out) if out else "–"
+        st.markdown("<div class='muted'>Early adopters — reasons:</div>", unsafe_allow_html=True)
+        st.markdown(_reasons(ea))
+        st.markdown("<div class='muted'>Current dominators — reasons:</div>", unsafe_allow_html=True)
+        st.markdown(_reasons(cu))
+
+    # Event-driven price spikes (Agent)
+    with st.expander("⚡ Event-driven Price Spikes", expanded=True):
+        with st.spinner("Agent finding out sginifcant event-driven price spikes..."):
+            ps_text = EventPriceSpike_agent(query, adoption=adoption)
+        ps = _salvage_json_text(ps_text)
+        ev = ps.get("events_detected", []) if isinstance(ps, dict) else []
+        if ev:
+            rows = []
+            for e in ev:
                 try:
-                    df_sp = df_sp.apply(pd.to_numeric, errors="coerce")
+                    rows.append({
+                        "Date": e.get("date"),
+                        "Ticker/Company": e.get("entity_or_topic"),
+                        "Direction": "▲" if (e.get("direction") == "+") else ("▼" if e.get("direction") == "-" else "~"),
+                        "1-Day %": None if e.get("price_move_1d_pct") is None else round(float(e.get("price_move_1d_pct")), 2),
+                        "Period %": None if e.get("price_move_period_pct") is None else round(float(e.get("price_move_period_pct")), 2),
+                        "Magnitude": e.get("magnitude"),
+                        "Confidence": None if e.get("confidence") is None else round(float(e.get("confidence")) * 100.0, 1),
+                        "Reason": e.get("blurb")
+                    })
                 except Exception:
                     pass
-                # Prepare YoY DataFrame
-                years = list(map(str, ts_obj.get("x") or []))
-                vals = []
-                try:
-                    series0 = (ts_obj.get("series") or [])[0] if isinstance(ts_obj.get("series"), list) else {}
-                    vals = series0.get("data") or []
-                except Exception:
-                    vals = []
-                n = min(len(years), len(vals))
-                years = years[:n]
-                vals = vals[:n]
-                yoy = []
-                for i in range(1, len(vals)):
-                    try:
-                        base = float(vals[i-1])
-                        curr = float(vals[i])
-                        pct = None if base in (None, 0) else ((curr - base) / base) * 100.0
-                        yoy.append(None if pct is None else round(pct, 2))
-                    except Exception:
-                        yoy.append(None)
-                yoy_years = years[1:] if len(years) > 1 else []
-                df_yoy = pd.DataFrame({"YoY %": yoy}, index=yoy_years)
-
-                # ---- Charts: index (left) and YoY bars (right) ----
-                c1, c2 = st.columns([2,1])
-                with c1:
-                    if not df_sp.empty:
-                        st.line_chart(df_sp)
-                        st.caption("Index rebased to 100 at the first available year.")
-                with c2:
-                    if not df_yoy.empty:
-                        yoy_chart = (
-                            alt.Chart(df_yoy.reset_index(names="Year"))
-                            .mark_bar()
-                            .encode(
-                                x=alt.X("Year:N", title="Year"),
-                                y=alt.Y("YoY %:Q", title="YoY %"),
-                                tooltip=[alt.Tooltip("Year:N"), alt.Tooltip("YoY %:Q", format=".2f")],
-                            )
-                        )
-                        st.altair_chart(yoy_chart, use_container_width=True)
-                    else:
-                        st.caption("YoY: insufficient data")
+            df_ev = pd.DataFrame(rows)
+            if not df_ev.empty:
+                st.dataframe(df_ev, use_container_width=True)
+                st.caption("Magnitude: low ≥0–5%, medium ≥5–10%, high ≥10% 1‑day moves. Confidence is a heuristic from the agent.")
             else:
-                st.info("No data was extracted.")
-        except Exception:
-            st.info("No data was extracted.")
-
-    # --- Trend Chart ---
-    st.header("📊 Trend Chart (Top 5 Competitors)")
-    trend = results.get("trend", {})
-    if trend and "charts" in trend and len(trend["charts"]) > 0:
-        try:
-            chart_data = trend["charts"][0]["series"][0]["data"]
-        except Exception:
-            chart_data = []
-        if chart_data:
-            # chart_data is [[name, value], ...]; values may be None
-            names = [row[0] for row in chart_data if isinstance(row, (list, tuple)) and len(row) >= 1]
-            vals  = [row[1] for row in chart_data if isinstance(row, (list, tuple)) and len(row) >= 2]
-            if any(v is not None for v in vals):
-                df = pd.DataFrame(chart_data, columns=["Company", "Market Value"]).dropna()
-                if not df.empty:
-                    st.bar_chart(df.set_index("Company"))
-                    st.caption("Market capitalization for top companies (if available).")
-                else:
-                    st.write(", ".join(names))
-            else:
-                # Fallback: use latest relative performance index from timeseries if available
-                perf_fallback = results.get("performance", {}) or {}
-                ts_fb = perf_fallback.get("timeseries", {}) or {}
-                ser_fb = ts_fb.get("series") or []
-                latest_map = {}
-                for s in ser_fb:
-                    try:
-                        label = s.get("name") or s.get("ticker") or "series"
-                        data = [v for v in (s.get("data") or []) if v is not None]
-                        if data:
-                            latest_map[label] = float(data[-1])
-                    except Exception:
-                        pass
-                if latest_map:
-                    df_fb = pd.DataFrame(
-                        {"Company": list(latest_map.keys()), "Relative Index": list(latest_map.values())}
-                    ).set_index("Company")
-                    st.bar_chart(df_fb)
-                    st.caption("Fallback: latest relative performance index (rebased), not market cap.")
-                else:
-                    # Render names as chips for a nicer look
-                    chips_html = "".join([f"<span class='chip'>{n}</span>" for n in names])
-                    st.markdown(chips_html, unsafe_allow_html=True)
+                st.info("No spike rows to display.")
         else:
-            st.info("No trend data.")
-    else:
-        st.info("No trend data.")
-
-
-    # --- Market Performance ---
-    st.header("📈 Market Performance (Rebased Index)")
-    perf = results.get("performance", {})
-
-    if isinstance(perf, dict) and isinstance(perf.get("timeseries"), dict) and (perf["timeseries"].get("series") or perf["timeseries"].get("x")):
-        try:
-            ts = perf.get("timeseries") or {"x": [], "series": []}
-            x_vals = ts.get("x", []) or []
-            cols = {}
-            for s in (ts.get("series") or []):
-                label = (s.get("name") or s.get("ticker") or "series")
-                data = list(s.get("data") or [])
-                # skip completely empty series (prevents ValueError)
-                if len(data) == 0:
-                    continue
-                # pad/truncate to match index length
-                if len(x_vals) == 0:
-                    continue
-                if len(data) < len(x_vals):
-                    data = data + [None] * (len(x_vals) - len(data))
-                elif len(data) > len(x_vals):
-                    data = data[:len(x_vals)]
-                cols[label] = data
-
-            if cols:
-                df = pd.DataFrame(cols, index=x_vals)
-                df = df.apply(pd.to_numeric, errors="coerce")
-                st.line_chart(df)
-                st.caption("Price-index series rebased to 100 at the first available year.")
-            else:
-                st.info("No performance data.")
-        except Exception:
-            st.info("No performance data.")
-    else:
-        st.info("No performance data.")
-
-    # ===== Extended Metrics =====
-    st.header("🧩 Extended Metrics")
-
-    # Adoption: early vs current
-    with st.expander("🚀 Customer Base Shifts — early companies vs current top companies the largest customer base", expanded=True):
-        ad = results.get("adoption", {})
-        try:
-            ad_root = ad.get("adoption", {}) if isinstance(ad, dict) else {}
-            ea = ad_root.get("early_adopters_top3") or []
-            cu = ad_root.get("current_adopters_top3") or ad_root.get("current_adopters_top5") or []
-
-            def _name_list(items):
-                names = []
-                for it in items:
-                    if isinstance(it, dict):
-                        n = it.get("company") or it.get("region") or it.get("name")
-                        if n:
-                            names.append(str(n))
-                return names[:3]
-
-            early_names = _name_list(ea)
-            current_names = _name_list(cu)
-
-            def _podium_html(title: str, names: list[str]) -> str:
-                # Build three ranked rows with gold/silver/bronze styles
-                ranks = ["gold","silver","bronze"]
-                medals = ["🥇","🥈","🥉"]
-                rows = []
-                for i, n in enumerate(names[:3]):
-                    cls = ranks[i] if i < 3 else ""
-                    badge = f"{medals[i]} {i+1}"
-                    rows.append(f"<div class='rank-item {cls}'><span class='rank-badge'>{badge}</span><span class='rank-name'>{n}</span></div>")
-                if not rows:
-                    return "<div class='muted'>No data was extracted.</div>"
-                return f"""\n<div class='card'>\n  <h4>{title}<span class='sub'>ranked</span></h4>\n  {''.join(rows)}\n</div>\n"""  # noqa: E501
-
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown(_podium_html("Top 3 Early Adopters", early_names), unsafe_allow_html=True)
-            with c2:
-                st.markdown(_podium_html("Top 3 Current Customer Base Dominators", current_names), unsafe_allow_html=True)
-
-            st.caption("Rank 1–3 shown with gold/silver/bronze styling; scores omitted by design. This is different than market capitalization. This is the amount of products consmer population use.")
-        except Exception:
-            st.info("No data was extracted.")
-
-    # Event-driven spikes (token-free, price-based)
-    with st.expander("⚡ Event-driven Spikes — price-based detector", expanded=True):
-        ps = results.get("price_spikes", {})
-        try:
-            ev = ps.get("events_detected", []) if isinstance(ps, dict) else []
-            st.markdown(
-                """
-                **How to read:**
-                - **Direction**: ▲ up / ▼ down
-                - **1-Day %**: Close-to-close percent change around the event date.
-                - **Period %**: Cumulative percent change from the start of the analysis window.
-                - **Magnitude**: qualitative size (low/medium/high)
-                - **Confidence**: model confidence (0–100%)
-                """
-            )
-            if ev:
-                rows = []
-                for e in ev:
-                    try:
-                        rows.append({
-                            "Date": e.get("date"),
-                            "Ticker/Company": e.get("entity_or_topic"),
-                            "Headline": e.get("headline"),
-                            "Direction": "▲" if (e.get("direction") == "+") else ("▼" if e.get("direction") == "-" else "~"),
-                            "1-Day %": None if e.get("price_move_1d_pct") is None else round(float(e.get("price_move_1d_pct")), 2),
-                            "Period %": None if e.get("price_move_period_pct") is None else round(float(e.get("price_move_period_pct")), 2),
-                            "Magnitude": e.get("magnitude"),
-                            "Confidence": None if e.get("confidence") is None else round(float(e.get("confidence")) * 100.0, 1),
-                            "Reason": e.get("blurb")
-                        })
-                    except Exception:
-                        pass
-                df_ev = pd.DataFrame(rows)
-                if not df_ev.empty:
-                    st.dataframe(df_ev, use_container_width=True)
-                else:
-                    st.info("No data was extracted.")
-            else:
-                st.info("No data was extracted.")
-        except Exception:
-            st.info("No data was extracted.")
+            st.info("No events detected by agent.")
