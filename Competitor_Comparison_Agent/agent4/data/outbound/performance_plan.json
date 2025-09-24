@@ -1,0 +1,19 @@
+{
+  "timeseries": {
+    "title": "Market performance (price-index)",
+    "unit": "index",
+    "frequency": "monthly",
+    "x": [],
+    "series": []
+  },
+  "period": {
+    "from": "2020",
+    "to": "2025"
+  },
+  "notes": [
+    "Fallback: empty series"
+  ],
+  "data_gaps": [
+    "No data from agent"
+  ]
+}

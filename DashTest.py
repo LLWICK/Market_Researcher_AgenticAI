@@ -4,11 +4,34 @@ import re
 import json
 import matplotlib.pyplot as plt
 import pandas as pd
-from AgentTeam import DataScraper_agent, Summarizer_agent, MarketResearch_agent, TrendAnalyzer_agent
+from AgentTeam import DataScraper_agent, Summarizer_agent, MarketResearch_agent, TrendAnalyzer_agent, CompetitorComparison_agent
+from  TrendChart import run_pipeline_b  
 
 # ---------------------------
 # Helpers
 # ---------------------------
+
+
+def extract_competitor_data(text: str):
+    """
+    Try to parse competitor comparison data from the LLM output.
+    Expecting structured JSON like:
+    [
+      {"Competitor": "X", "Sales": 1000, "MarketShare": 20, "GrowthRate": 5},
+      {"Competitor": "Y", "Sales": 2000, "MarketShare": 30, "GrowthRate": 10}
+    ]
+    """
+    try:
+        json_match = re.search(r"\[.*\]", text, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group())
+            if isinstance(data, list) and all(isinstance(d, dict) for d in data):
+                return pd.DataFrame(data)
+    except Exception as e:
+        print(f"[extract_competitor_data] Failed: {e}")
+    return None
+
+
 def clean_text(text: str) -> str:
     """Remove unwanted characters and extra whitespace"""
     if not text:
@@ -98,3 +121,81 @@ if st.button("Run Agents") and query.strip():
             st.pyplot(fig)
         else:
             st.info("No structured statistics found in the trend analysis output.")
+
+            # ---------------------------
+
+    # Competitor Comparison
+    # ---------------------------
+    with st.spinner("Running Competitor Comparison..."):
+        # Pass scraped docs into the competitor comparison agent
+        competitor_out = CompetitorComparison_agent(query=query, docs=scraper_out.get("docs", []))
+
+        # Case 1: Already parsed JSON list
+        if isinstance(competitor_out, list):
+            df_comp = pd.DataFrame(competitor_out)
+            comp_text = json.dumps(competitor_out, indent=2)
+        else:
+            # Case 2: Fallback (raw_output text)
+            comp_text = clean_text(competitor_out.get("raw_output", "No competitor data."))
+            df_comp = extract_competitor_data(comp_text)
+
+        st.subheader("🏢 Competitor Comparison")
+        st.text_area("Competitor Analysis", comp_text, height=250)
+
+        if df_comp is not None and not df_comp.empty:
+            st.subheader("📊 Competitor Sales & Market Share")
+
+            # Bar chart for Sales
+            if "Sales" in df_comp.columns:
+                st.bar_chart(df_comp.set_index("Competitor")["Sales"])
+
+            # Pie chart for Market Share
+            if "MarketShare" in df_comp.columns:
+                fig, ax = plt.subplots()
+                ax.pie(df_comp["MarketShare"], labels=df_comp["Competitor"], autopct="%1.1f%%", startangle=90)
+                ax.axis("equal")
+                st.pyplot(fig)
+
+            # Growth Rate line chart
+            if "GrowthRate" in df_comp.columns:
+                st.line_chart(df_comp.set_index("Competitor")["GrowthRate"])
+        else:
+            st.info("No structured competitor data found. Showing only raw analysis text above.")
+
+
+    
+    with st.spinner("Running pipeline..."):
+        results = run_pipeline_b(query)
+
+        # --- Scope ---
+        """ st.header("📌 Query Scope")
+        st.json(results["scope"]) """
+
+        # --- Trend Chart ---
+        st.header("📊 Trend Chart (Top 5 Competitors)")
+        trend = results.get("trend", {})
+        #st.json(trend)
+
+        if trend and "charts" in trend and len(trend["charts"]) > 0:
+            chart_data = trend["charts"][0]["series"][0]["data"]
+            if chart_data:
+                df = pd.DataFrame(chart_data, columns=["Company", "Market Value"])
+                st.bar_chart(df.set_index("Company"))
+
+        # --- Resolved Tickers ---
+        #st.header("🏷️ Resolved Tickers")
+        #st.json(results["tickers"])
+
+        # --- Market Performance ---
+        #st.header("📈 Market Performance (Rebased Index)")
+        perf = results.get("performance", {})
+        #st.json(perf)
+
+        if perf and "timeseries" in perf and perf["timeseries"].get("series"):
+            df = pd.DataFrame({
+                s["name"]: s["data"]
+                for s in perf["timeseries"]["series"]
+            }, index=perf["timeseries"]["x"])
+            st.line_chart(df)
+
+
