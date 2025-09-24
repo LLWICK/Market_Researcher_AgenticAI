@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from Data_Scraper_IR_Agent.DataScraperIR import collect_and_index, ir_search
 from phi.tools.yfinance import YFinanceTools
 from utills.cleaning import extract_clean_text,clean_output
+import re
 
 load_dotenv()
 
@@ -32,7 +33,33 @@ def chunk_text(text: str, max_words: int = 500) -> list[str]:
 summarizer_agent = Agent(
     name="SummarizerAgent",
     model=Groq(id="openai/gpt-oss-20b"),
-    instructions="Summarize documents concisely and clearly to 100-200 words. Extract  Market insights to pass into Market researcher agent and trend analyzer agent."
+    instructions="""
+You are a **Market Insight Summarizer Agent**.
+
+Your task:
+1. Read the provided documents.
+2. Write a clear, concise **market overview** (150–200 words).
+3. Extract and highlight **only information relevant for market research**:
+   - Key **market size / growth trends** (CAGR, YoY growth, demand shifts).
+   - Key **competitors** (companies, brands, or products).
+   - **Opportunities** (emerging markets, tech advances, consumer demand).
+   - **Risks / challenges** (supply chain issues, regulations, costs).
+   - Any **quantifiable metrics** (percentages, revenue figures, unit counts).
+
+Formatting:
+- Start with a short **executive summary (2–3 sentences)**.
+- Then provide **bullet points** under these sections:
+   • Market Trends  
+   • Competitors  
+   • Opportunities  
+   • Risks / Challenges  
+   • Key Metrics  
+
+Rules:
+- Keep total output ≤ 200 words.
+- If no data is available for a section, write: "Not mentioned".
+- Avoid generic filler text.
+"""
 )
 
 market_research_agent = Agent(
@@ -52,21 +79,6 @@ trend_analyzer_agent = Agent(
 )
 
 
-trend_stats_agent = Agent(
-    name="TrendStatsAgent",
-    model=Groq(id="deepseek-r1-distill-llama-70b"),
-    instructions="""From the given market insights, extract **3–6 quantifiable statistics**.  
-Always return ONLY valid JSON in this format:
-
-[
-  {"metric": "EV sales growth", "value": 12, "unit": "% CAGR"},
-  {"metric": "Battery cost reduction", "value": 8, "unit": "% YoY"},
-  {"metric": "Charging stations expansion", "value": 1500, "unit": "units"}
-]
-
-No text outside JSON.
-"""
-)
 
 # ---------------------------
 # Agent Functions
@@ -144,6 +156,61 @@ def MarketResearch_agent():
     return {"insights": insights}
 
 
+def CompetitorComparison_agent(query: str, docs: list):
+    """
+    Analyze competitors in a given industry using web-scraped docs as context.
+    Returns dict with structured data (if possible) and raw text.
+    """
+    context = "\n\n".join(docs[:10]) if docs else "No scraped documents available."
+
+    prompt = f"""
+    You are a competitor analysis agent. Your task is to analyze competitors in the industry.
+
+    User Query: "{query}"
+
+    Context (from web scraping, may contain articles, reports, or financial data):
+    {context}
+
+    Instructions:
+    1. Identify the top 3–5 competitors in this industry.
+    2. For each competitor, extract or estimate:
+       - Sales (numeric, in millions USD, e.g., 4500 = $4.5B)
+       - MarketShare (percentage 0–100)
+       - GrowthRate (percentage 0–100)
+    3. If exact figures are unavailable, make reasonable estimates.
+    4. Respond **only** with a valid JSON array of objects in this format:
+
+    [
+      {{"Competitor": "Competitor A", "Sales": 1200, "MarketShare": 25, "GrowthRate": 8}},
+      {{"Competitor": "Competitor B", "Sales": 800, "MarketShare": 15, "GrowthRate": 5}}
+    ]
+
+    Rules:
+    - Do NOT include explanations outside JSON.
+    - Ensure values are numbers (no % symbols, no commas).
+    - Sales should be integers representing millions of USD.
+    """
+
+    agent = Agent(
+        name="Competitor Comparison Agent",
+        role="Extract and analyze competitor data from scraped context",
+        model=Groq(id="deepseek-r1-distill-llama-70b"),
+    )
+
+    raw_output = get_text(agent.run(prompt))
+
+    parsed = []
+    try:
+        json_match = re.search(r"\[.*\]", raw_output, re.DOTALL)
+        if json_match:
+            parsed = json.loads(json_match.group())
+    except Exception as e:
+        print(f"[CompetitorComparison_agent] Failed to parse JSON: {e}")
+
+    return {"data": parsed, "raw": raw_output}
+
+
+
 def TrendAnalyzer_agent():
     """Receive market insights, extract trends"""
     data = protocol.receive("TrendAnalyzerAgent") or {"insights": ""}
@@ -157,21 +224,10 @@ def TrendAnalyzer_agent():
     return {"trends": trends}
 
 
-import json
 
-def TrendStats_agent():
-    """Receive market insights, extract structured stats for charts"""
-    data = protocol.receive("TrendAnalyzerAgent") or {"insights": ""}
-    raw_output = ""
-    try:
-        raw_output = get_text(trend_stats_agent.run(data.get("insights", "")))
-        stats = json.loads(raw_output)
-    except Exception as e:
-        print(f"[TrendStatsAgent] Error parsing stats: {e}")
-        stats = []
-    
-    print("[TrendStatsAgent] Stats extracted successfully.")
-    return {"stats": stats, "raw": raw_output}
+
+
+
 
 
 # ---------------------------
