@@ -399,7 +399,7 @@ def run_pipeline_b(query: str):
     perf = MarketPerformance_agent()
     return {"scope": scope, "trend": trend, "tickers": tickers, "performance": perf}
 
-if __name__ == "__main__":
+""" if __name__ == "__main__":
     query = "Cloud security vendors in the US"
 
     res = run_pipeline_b(query)
@@ -408,6 +408,6 @@ if __name__ == "__main__":
     print(res)
 
    
-    """ print(f"Running pipeline for query: {query}")
+    print(f"Running pipeline for query: {query}")
     results = run_pipeline(query)
     print(json.dumps(results, indent=2)) """
