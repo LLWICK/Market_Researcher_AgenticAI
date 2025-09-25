@@ -4,7 +4,7 @@ import re
 import json
 import matplotlib.pyplot as plt
 import pandas as pd
-from AgentTeam import DataScraper_agent, Summarizer_agent, MarketResearch_agent, TrendAnalyzer_agent, CompetitorComparison_agent
+from AgentTeam import DataScraper_agent, Summarizer_agent, MarketResearch_agent
 from  TrendChart import run_pipeline_b  
 import streamlit as st
 import pandas as pd
@@ -102,14 +102,14 @@ if st.button("Run Agents") and query.strip():
         with st.spinner("Running Summarizer..."):
             summary_out = Summarizer_agent()
             st.subheader("📝 Summarizer Output")
-            st.text_area("Summary", clean_text(summary_out.get("summary", "")), height=200)
+            st.markdown(clean_text(summary_out.get("summary", "")))
 
     # --------------------------- Market Research ---------------------------
     with tabs[2]:
         with st.spinner("Running Market Research..."):
             research_out = MarketResearch_agent()
             st.subheader("📈 Market Research Insights")
-            st.text_area("Insights", clean_text(research_out.get("insights", "")), height=200)
+            st.markdown(clean_text(research_out.get("insights", "")))
 
 
 
@@ -195,7 +195,7 @@ if st.button("Run Agents") and query.strip():
         with st.spinner("Running Agents..."):
 
             st.set_page_config(page_title="Pipeline B Test", layout="wide")
-            st.title("🔬 Market Scope → Trend → Tickers → Performance (Pipeline B)")
+            st.title("Market Competitor Trends")
             # --- Minimal CSS for cards and chips ---
             st.markdown("""
                 <style>
@@ -271,7 +271,7 @@ if st.button("Run Agents") and query.strip():
                 }
 
 
-            st.header("🧠 Trend Charts — Agent Outputs")
+            st.header("Trend Charts")
 
             # Competitor Comparison (structured list) + Competitor Trend timeseries
             with st.expander("🏁 Trend of Major Market Players", expanded=True):
