@@ -27,8 +27,8 @@ def fetch_reddit_posts(query: str, limit: int = 20):
 # --------------------------
 # Twitter (Twikit)
 # --------------------------
-client = Client(language='en-US')
-client.load_cookies("C:/Users/CHAMA COMPUTERS/Desktop/Data_Science/Academic/IRWA/Project/AgenticAI_project/Market_Researcher_AgenticAI/cookies_fixed.json")
+#client = Client(language='en-US')
+#client.load_cookies("C:/Users/CHAMA COMPUTERS/Desktop/Data_Science/Academic/IRWA/Project/AgenticAI_project/Market_Researcher_AgenticAI/cookies_fixed.json")
 
 def fetch_twitter_posts(query: str, limit: int = 20):
     posts = []
