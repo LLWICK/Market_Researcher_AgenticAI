@@ -337,5 +337,5 @@ def EventPriceSpike_agent(query: str, adoption: dict | None = None):
     return text   
 
 # Example usage:
-results = CompetitorTrend_agent("Electric Vehicle market trends")
-print(results)
+# results = CompetitorTrend_agent("Electric Vehicle market trends")
+# print(results)

@@ -195,7 +195,7 @@ if st.button("Run Agents") and query.strip():
         with st.spinner("Running Agents..."):
 
             st.set_page_config(page_title="Pipeline B Test", layout="wide")
-            st.title("🔬 Market Scope → Trend → Tickers → Performance (Pipeline B)")
+            st.title("Market Competitor Trends")
             # --- Minimal CSS for cards and chips ---
             st.markdown("""
                 <style>
@@ -271,7 +271,7 @@ if st.button("Run Agents") and query.strip():
                 }
 
 
-            st.header("🧠 Trend Charts — Agent Outputs")
+            st.header("Trend Charts")
 
             # Competitor Comparison (structured list) + Competitor Trend timeseries
             with st.expander("🏁 Trend of Major Market Players", expanded=True):
