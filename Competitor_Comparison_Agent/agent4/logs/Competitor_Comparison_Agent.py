@@ -84,13 +84,22 @@ def _load_json_file(p: Path) -> dict:
         return json.load(f)
 
 def gather_inputs() -> Dict:
-    """Load latest files dropped by Agents 1–3."""
-    # Expect files like: market_insights.json, trends.json, competitors.json
+    """Load latest files dropped by Agents 1–3.
+    Also supports fallback for Trend Analyzer output from Agent 3 written to outbound as trend_chart_plan.json.
+    """
     data = {}
+    # Primary inbound files
     for fname in ["competitors.json", "trends.json", "comparison_request.json"]:
         fp = DATA_IN / fname
         if fp.exists():
             data[fname] = _load_json_file(fp)
+
+    # Fallback: if trends.json missing, look for trend chart plan in outbound
+    if "trends.json" not in data:
+        fallback_plan = DATA_OUT / "trend_chart_plan.json"
+        if fallback_plan.exists():
+            data["trend_chart_plan.json"] = _load_json_file(fallback_plan)
+
     return data
 
 def compute_scores(profiles: List[CompetitorProfile], req: ComparisonRequest) -> ComparisonResult:
@@ -171,6 +180,36 @@ def run_compare(requester_role: str = "agent4") -> Path:
             except Exception as e:
                 audit_log("trends_data_error", requester_role, {"error": str(e)})
                 print(f"Warning: Invalid trends data: {e}")
+        # Fallback: build a minimal TrendSignals from trend_chart_plan.json
+        elif "trend_chart_plan.json" in data:
+            try:
+                plan = data["trend_chart_plan.json"] or {}
+                charts = plan.get("charts", []) if isinstance(plan, dict) else []
+                topics: List[str] = []
+                # Extract company names or labels from first chart series
+                if charts and isinstance(charts[0], dict):
+                    series_list = charts[0].get("series", [])
+                    if series_list and isinstance(series_list[0], dict):
+                        data_points = series_list[0].get("data", [])
+                        # data_points expected like [["Company A", 123], ...] or list of pairs
+                        for dp in data_points:
+                            try:
+                                name = dp[0]
+                                if isinstance(name, str):
+                                    topics.append(sanitize_text(name))
+                            except Exception:
+                                continue
+                sanitized_trends = {
+                    "topics": topics[:10],
+                    "sentiment_score": None,
+                    "growth_keywords": [],
+                    "regions": [],
+                }
+                trends = TrendSignals(**sanitized_trends)
+                audit_log("trend_fallback_used", requester_role, {"source": "trend_chart_plan.json", "topics_count": len(topics)})
+            except Exception as e:
+                audit_log("trend_fallback_error", requester_role, {"error": str(e)})
+                print(f"Warning: Trend fallback failed: {e}")
         
         req_data = data.get("comparison_request.json", {
             "market": "default",
@@ -249,3 +288,109 @@ def run_compare(requester_role: str = "agent4") -> Path:
 
 if __name__ == "__main__":
     run_compare()
+
+
+def run_compare_from_payload(
+    competitors: List[Dict],
+    trends: Dict = None,
+    request: Dict = None,
+    requester_role: str = "agent4",
+) -> Dict:
+    """Run comparison using in-memory payloads instead of reading/writing files.
+    Returns the output dict that would normally be written to outbound JSON.
+    """
+    from datetime import datetime
+
+    # Security check consistent with file-based flow
+    if not role_allowed(requester_role, "compare"):
+        audit_log("unauthorized_comparison_attempt", requester_role)
+        raise SecurityError(f"Role {requester_role} not authorized to perform comparison")
+
+    audit_log("comparison_started", requester_role, {"mode": "payload", "timestamp": datetime.utcnow().isoformat()})
+
+    try:
+        # Competitors
+        comps: List[CompetitorProfile] = []
+        for comp_data in competitors or []:
+            try:
+                sanitized_comp = {
+                    "name": sanitize_text(comp_data.get("name", "")),
+                    "website": sanitize_text(comp_data.get("website", "")),
+                    "kpis": comp_data.get("kpis", {}),
+                    "pricing": comp_data.get("pricing", {}),
+                    "features": comp_data.get("features", {}),
+                }
+                comps.append(CompetitorProfile(**sanitized_comp))
+            except Exception as e:
+                audit_log("competitor_data_error", requester_role, {"error": str(e), "data": comp_data})
+
+        # Trends (optional)
+        trend_signals: TrendSignals = None
+        if trends:
+            try:
+                sanitized_trends = {
+                    "topics": [sanitize_text(t) for t in trends.get("topics", [])],
+                    "sentiment_score": trends.get("sentiment_score"),
+                    "growth_keywords": [sanitize_text(k) for k in trends.get("growth_keywords", [])],
+                    "regions": [sanitize_text(r) for r in trends.get("regions", [])],
+                }
+                trend_signals = TrendSignals(**sanitized_trends)
+            except Exception as e:
+                audit_log("trends_data_error", requester_role, {"error": str(e)})
+
+        # Request
+        req_input = request or {}
+        sanitized_req = {
+            "market": sanitize_text(req_input.get("market", "default")),
+            "primary_kpis": [sanitize_text(kpi) for kpi in req_input.get("primary_kpis", [])],
+            "feature_weights": req_input.get("feature_weights", {}),
+            "price_weight": req_input.get("price_weight", 0.2),
+            "kpi_weight": req_input.get("kpi_weight", 0.5),
+            "feature_weight": req_input.get("feature_weight", 0.3),
+        }
+        req = ComparisonRequest(**sanitized_req)
+
+        if not comps:
+            audit_log("no_valid_competitors", requester_role)
+            raise SecurityError("No valid competitor data found")
+
+        # Score
+        result = compute_scores(comps, req)
+
+        # Summary via Ollama
+        prompt = f"""Market: {req.market}
+        Trends: {trend_signals.dict() if trend_signals else {}}
+        Scores: {result.scores}
+        Ranking: {result.ranking}
+        Provide an executive summary (<=150 words) focusing on why the top 2 rank highest and risks to watch."""
+
+        summary = "LLM analysis unavailable - using baseline scoring only."
+        try:
+            llm_response = call_ollama_llm(prompt)
+            if llm_response:
+                summary = sanitize_text(llm_response)
+                audit_log("llm_summary_generated", requester_role, {"summary_length": len(summary), "mode": "payload"})
+            else:
+                audit_log("llm_response_empty", requester_role)
+        except Exception as e:
+            audit_log("llm_error", requester_role, {"error": str(e)})
+
+        out = {
+            "comparison": result.dict(),
+            "executive_summary": summary,
+            "request": req.dict(),
+            "metadata": {
+                "generated_by": requester_role,
+                "timestamp": datetime.utcnow().isoformat(),
+                "competitors_analyzed": len(comps),
+                "security_validated": True,
+                "mode": "payload",
+            },
+        }
+
+        audit_log("comparison_completed", requester_role, {"mode": "payload", "competitors_count": len(comps), "ranking": result.ranking})
+        return out
+
+    except Exception as e:
+        audit_log("comparison_error", requester_role, {"error": str(e), "mode": "payload"})
+        raise
