@@ -115,7 +115,6 @@ if st.button("Run Agents") and query.strip():
 
 
 
-
     # --------------------------- Social Media trend Agent ---------------------------
 
     with tabs[3]:
@@ -299,7 +298,7 @@ if st.button("Run Agents") and query.strip():
                     chart = _altair_timeseries_chart(ts_ct, title=ts_ct.get("title","Competitor price movement (rebased)"))
                     if chart is not None:
                         st.altair_chart(chart, use_container_width=True)
-                        st.caption("Competitor price movement")
+                        st.caption("Competitor price movement. Rebased so each series starts at 100 in its first year")
                     else:
                         st.info("Competitor trend: no series.")
                 else:
