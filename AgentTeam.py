@@ -6,6 +6,7 @@ from Data_Scraper_IR_Agent.DataScraperIR import collect_and_index, ir_search
 from phi.tools.yfinance import YFinanceTools
 from utills.cleaning import extract_clean_text,clean_output
 import re
+from phi.tools.duckduckgo import DuckDuckGo
 
 load_dotenv()
 
@@ -33,6 +34,7 @@ def chunk_text(text: str, max_words: int = 500) -> list[str]:
 summarizer_agent = Agent(
     name="SummarizerAgent",
     model=Groq(id="openai/gpt-oss-20b"),
+    tools=[DuckDuckGo()],
     instructions="""
 You are a **Market Insight Summarizer Agent**.
 
@@ -45,6 +47,7 @@ Your task:
    - **Opportunities** (emerging markets, tech advances, consumer demand).
    - **Risks / challenges** (supply chain issues, regulations, costs).
    - Any **quantifiable metrics** (percentages, revenue figures, unit counts).
+4. If the provided documents are not enough please use the tools provided (**DuckDuckGo()**) and get the relevant information
 
 Formatting:
 - Start with a short **executive summary (2–3 sentences)**.
@@ -71,12 +74,7 @@ market_research_agent = Agent(
 
 )
 
-trend_analyzer_agent = Agent(
-    name="TrendAnalyzerAgent",
-    model=Groq(id="deepseek-r1-distill-llama-70b"),
-    instructions="Extract key trends and patterns from market insights. Use the given tools if you need to",
-    tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, company_info=True)],
-)
+
 
 
 
@@ -156,72 +154,7 @@ def MarketResearch_agent():
     return {"insights": insights}
 
 
-def CompetitorComparison_agent(query: str, docs: list):
-    """
-    Analyze competitors in a given industry using web-scraped docs as context.
-    Returns dict with structured data (if possible) and raw text.
-    """
-    context = "\n\n".join(docs[:10]) if docs else "No scraped documents available."
 
-    prompt = f"""
-    You are a competitor analysis agent. Your task is to analyze competitors in the industry.
-
-    User Query: "{query}"
-
-    Context (from web scraping, may contain articles, reports, or financial data):
-    {context}
-
-    Instructions:
-    1. Identify the top 3–5 competitors in this industry.
-    2. For each competitor, extract or estimate:
-       - Sales (numeric, in millions USD, e.g., 4500 = $4.5B)
-       - MarketShare (percentage 0–100)
-       - GrowthRate (percentage 0–100)
-    3. If exact figures are unavailable, make reasonable estimates.
-    4. Respond **only** with a valid JSON array of objects in this format:
-
-    [
-      {{"Competitor": "Competitor A", "Sales": 1200, "MarketShare": 25, "GrowthRate": 8}},
-      {{"Competitor": "Competitor B", "Sales": 800, "MarketShare": 15, "GrowthRate": 5}}
-    ]
-
-    Rules:
-    - Do NOT include explanations outside JSON.
-    - Ensure values are numbers (no % symbols, no commas).
-    - Sales should be integers representing millions of USD.
-    """
-
-    agent = Agent(
-        name="Competitor Comparison Agent",
-        role="Extract and analyze competitor data from scraped context",
-        model=Groq(id="deepseek-r1-distill-llama-70b"),
-    )
-
-    raw_output = get_text(agent.run(prompt))
-
-    parsed = []
-    try:
-        json_match = re.search(r"\[.*\]", raw_output, re.DOTALL)
-        if json_match:
-            parsed = json.loads(json_match.group())
-    except Exception as e:
-        print(f"[CompetitorComparison_agent] Failed to parse JSON: {e}")
-
-    return {"data": parsed, "raw": raw_output}
-
-
-
-def TrendAnalyzer_agent():
-    """Receive market insights, extract trends"""
-    data = protocol.receive("TrendAnalyzerAgent") or {"insights": ""}
-    try:
-        trends = extract_clean_text(get_text(trend_analyzer_agent.run(data.get("insights", ""))))
-    except Exception as e:
-        trends = f"[Error] {e}"
-        print(f"[TrendAnalyzerAgent] Error: {e}")
-
-    print("[TrendAnalyzerAgent] Trends extracted successfully.")
-    return {"trends": trends}
 
 
 
@@ -237,8 +170,7 @@ def run_full_pipeline(query: str):
     DataScraper_agent(query)
     Summarizer_agent()
     MarketResearch_agent()
-    trends = TrendAnalyzer_agent()
-    return trends
+    return 
 
 # Example usage:
 # results = run_full_pipeline("Electric Vehicle market trends 2025")
