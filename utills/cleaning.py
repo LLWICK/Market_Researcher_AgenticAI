@@ -54,3 +54,7 @@ def extract_clean_text(messages: Union[str, List, Dict]) -> str:
 
     return text
 
+def remove_think_tags(text: str) -> str:
+    """Remove any text inside <think> ... </think> tags, including the tags."""
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
