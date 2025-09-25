@@ -16,6 +16,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from SocialMedia_Trend_Agent.SocialAgent import SocialTrends_agent
+from utills.cleaning import remove_think_tags
 
 # ---------------------------
 # Helpers
@@ -102,14 +103,14 @@ if st.button("Run Agents") and query.strip():
         with st.spinner("Running Summarizer..."):
             summary_out = Summarizer_agent()
             st.subheader("📝 Summarizer Output")
-            st.markdown(clean_text(summary_out.get("summary", "")))
+            st.markdown(remove_think_tags(summary_out.get("summary", "")))
 
     # --------------------------- Market Research ---------------------------
     with tabs[2]:
         with st.spinner("Running Market Research..."):
             research_out = MarketResearch_agent()
             st.subheader("📈 Market Research Insights")
-            st.markdown(clean_text(research_out.get("insights", "")))
+            st.markdown(remove_think_tags(clean_text(research_out.get("insights", ""))))
 
 
 
