@@ -1,25 +1,19 @@
 # SocialTrends_agent.py
-import os, json, re
-import pandas as pd
-import snscrape_patch
-import snscrape.modules.twitter as sntwitter
-from twikit import Client
+import os
+import json
+import re
 import praw
 from phi.agent import Agent
 from phi.model.groq import Groq
-import asyncio
+from twikit import Client
 from dotenv import load_dotenv
-
 load_dotenv()
 
-
-
-
 # --------------------------
-# Reddit API Setup (Free)
+# Reddit API Setup
 # --------------------------
 reddit = praw.Reddit(
-    client_id="D_me8FcA9CGnYzG1K_k4Lg",       # get from https://www.reddit.com/prefs/apps
+    client_id="D_me8FcA9CGnYzG1K_k4Lg",
     client_secret="xd6cv-9ytztAq89V-EotdW6KEexxvw",
     user_agent="SocialTrendsAgent"
 )
@@ -31,57 +25,49 @@ def fetch_reddit_posts(query: str, limit: int = 20):
     return posts
 
 # --------------------------
-# Twitter (snscrape, Free)
+# Twitter (Twikit)
 # --------------------------
 client = Client(language='en-US')
-client.load_cookies("C:/Users/CHAMA COMPUTERS/Desktop/Data_Science/Academic/IRWA/Project/AgenticAI_project/Market_Researcher_AgenticAI/cookies_fixed.json")  # make sure cookies.json is exported from your browser
+client.load_cookies("C:/Users/CHAMA COMPUTERS/Desktop/Data_Science/Academic/IRWA/Project/AgenticAI_project/Market_Researcher_AgenticAI/cookies_fixed.json")
 
 def fetch_twitter_posts(query: str, limit: int = 20):
-    async def _fetch():
-        posts = []
-        tweets = await client.search_tweet(query, product='Top', count=limit)
-        for tweet in tweets:
-            posts.append({"platform": "Twitter", "text": tweet.text})
-        return posts
-    
-    return asyncio.run(_fetch())
+    posts = []
+    tweets = client.search_tweet(query, product='Top', count=limit)
+    for tweet in tweets:
+        posts.append({"platform": "Twitter", "text": tweet.text})
+    return posts
 
 # --------------------------
 # Combine sources
 # --------------------------
 def fetch_social_posts(query: str, limit: int = 20):
-    reddit_data = fetch_reddit_posts(query, limit=limit//2)
-    #twitter_data = fetch_twitter_posts(query, limit=limit//2)
+    reddit_data = fetch_reddit_posts(query, limit=limit // 2)
+    #twitter_data = fetch_twitter_posts(query, limit=limit // 2)
     return reddit_data
 
 # --------------------------
-# LLM Agent
+# LLM Agent Setup
 # --------------------------
-llm = Groq(id="deepseek-r1-distill-llama-70b", api_key=os.getenv("GROQ_API_KEY"))
+llm = Groq(id="openai/gpt-oss-20b", api_key=os.getenv("GROQ_API_KEY"))
 
-social_agent = Agent(
-    name="Social Trends Agent",
-    model=llm,
-    instructions=(
-        """
+instructions = """
 You are a Social Trends Analysis agent.
 
 Task:
-- Analyze the given list of social media posts.
-- Identify market trends mentioned in the posts.
-- Count how many posts mention each trend.
+- Analyze ALL the provided social media posts.
+- Go through each post individually.
+- Identify every market trend mentioned in any post, even if it appears only once.
+- Count exactly how many posts mention each trend.
 - Determine the sentiment of each trend: positive, negative, or neutral.
-
-Output requirements:
-- ONLY output a valid JSON array of objects.
-- Each object must have exactly these fields:
+- Do NOT omit minor or historical trends.
+- ONLY output a JSON array with the fields:
     {
         "trend": "<string, trend description>",
         "mentions": <integer, number of posts mentioning the trend>,
         "sentiment": "<positive|negative|neutral>"
     }
-- DO NOT include any explanations, reasoning, <think> tags, or extra text.
-- Ensure the JSON is parseable and contains no trailing commas.
+- DO NOT include explanations, reasoning, <think> tags, or extra text.
+- Ensure the JSON is valid and parseable, with no trailing commas.
 
 Example output:
 [
@@ -94,118 +80,68 @@ Example output:
         "trend": "Market contraction due to COVID-19",
         "mentions": 3,
         "sentiment": "negative"
+    },
+    {
+        "trend": "Rise of Chinese smartphone brands",
+        "mentions": 2,
+        "sentiment": "neutral"
     }
 ]
 """
-    ),
+
+
+social_agent = Agent(
+    name="Social Trends Agent",
+    model=llm,
+    instructions=instructions
 )
 
 # --------------------------
-# JSON extraction helper
+# JSON Extraction Helper
 # --------------------------
-def extract_json_from_response(messages):
-    """
-    Extract JSON array from a list of Phi messages.
-    """
-    for m in messages:
-        if not m.content:
+def extract_trends_from_agent_response(response):
+    trends = []
+    for msg in getattr(response, "messages", []):
+        if not getattr(msg, "content", None):
             continue
-        text = m.content
-
+        text = msg.content
         # Remove <think> tags
         text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
         # Remove code fences
         text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
         text = text.strip()
-
-        # Try to find JSON array
-        match = re.search(r"\[\s*{.*?}\s*\]", text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group())
-            except json.JSONDecodeError:
-                continue
-    return match
-
-
-def clean_agent_output(text: str) -> str:
-    """
-    Clean agent output by removing think tags and other unwanted elements
-    """
-    if not text:
-        return text
-    
-    # Remove <think>...</think> tags and their content
-    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL | re.IGNORECASE)
-    
-    # Remove any remaining opening/closing think tags
-    text = re.sub(r'</?think[^>]*>', '', text, flags=re.IGNORECASE)
-    
-    # Remove extra whitespace and newlines
-    text = re.sub(r'\n\s*\n+', '\n', text)
-    text = text.strip()
-    
-    return text
-
-
-
-def extract_trends_from_agent_response(response):
-    """
-    Extracts the JSON trends array from a Phi Agent RunResponse.
-
-    Args:
-        response: RunResponse object returned by agent.run()
-
-    Returns:
-        List of trend dictionaries, e.g.:
-        [
-            {"trend": "Fiat's marketing campaign", "mentions": 1, "sentiment": "negative"},
-            ...
-        ]
-    """
-    trends = []
-
-    # Loop through all messages in the response
-    for msg in getattr(response, "messages", []):
-        if not getattr(msg, "content", None):
-            continue
-
-        text = msg.content
-
-        # Remove <think> tags and everything inside
-        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-        # Remove code fences ``` or ```json
-        text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
-        text = text.strip()
-
-        # Look for JSON array inside the text
+        # Find JSON array
         match = re.search(r"\[\s*{.*?}\s*\]", text, flags=re.DOTALL)
         if match:
             try:
                 trends = json.loads(match.group())
-                return trends  # Return first valid JSON array found
+                return trends
             except json.JSONDecodeError:
                 continue
-
-    # If nothing found, return empty list
     return trends
 
 # --------------------------
-# Main agent function
+# Main Agent Function
 # --------------------------
 def SocialTrends_agent(query: str):
     posts = fetch_social_posts(query, limit=20)
+
     response = social_agent.run(f"Analyze these posts for trends: {posts}")
 
-    #trends = extract_trends_from_agent_response(response)
-    return response.messages
+    try:
+        # The model outputs JSON directly in response.content
+        raw = response.content.strip()
+
+        # Parse into Python list
+        trends = json.loads(raw)
+        return trends
+    except Exception as e:
+        print("JSON parsing error:", e)
+        return []
 
 # --------------------------
-# Example usage
+# Example Usage
 # --------------------------
-
-
-
 """ if __name__ == "__main__":
-    results = SocialTrends_agent("Automobile market")
+    results = SocialTrends_agent("Global EV vehicle industry")
     print(results) """

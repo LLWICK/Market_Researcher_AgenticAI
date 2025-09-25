@@ -1,61 +1,93 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-from SocialAgent import SocialTrends_agent, extract_trends_from_agent_response
+from SocialAgent import SocialTrends_agent
 
-st.set_page_config(page_title="Social Trends Dashboard", layout="wide")
+# Sample data from your agent
+trends = [
+    {'trend': 'global auto industry price war due to EV cost dropping', 'mentions': 1, 'sentiment': 'negative'},
+    {'trend': 'electric vehicle cost reduction', 'mentions': 1, 'sentiment': 'positive'},
+    {'trend': 'EVs priced around $25,000', 'mentions': 1, 'sentiment': 'positive'},
+    {'trend': 'Canada 2035 gas vehicle ban', 'mentions': 1, 'sentiment': 'negative'},
+    {'trend': 'EVs inadequate for Canadian winters', 'mentions': 1, 'sentiment': 'negative'},
+    {'trend': 'automakers turning to hybrids during EV transition', 'mentions': 1, 'sentiment': 'neutral'},
+    {'trend': 'global EV adoption mandate deadlines approaching', 'mentions': 1, 'sentiment': 'neutral'},
+    {'trend': 'bullish on lithium stocks due to EV demand', 'mentions': 1, 'sentiment': 'positive'},
+    {'trend': "America's failure to transition to EVs", 'mentions': 1, 'sentiment': 'negative'},
+    {'trend': 'over 100 electric vehicle brands in China being pushed out', 'mentions': 1, 'sentiment': 'negative'},
+    {'trend': 'clean energy high IQ play including solar, hydrogen, nuclear', 'mentions': 1, 'sentiment': 'positive'},
+    {'trend': 'climate change fatality', 'mentions': 1, 'sentiment': 'negative'},
+    {'trend': 'Toyota increasing supply to Tesla of EV-use electric compressors', 'mentions': 1, 'sentiment': 'neutral'}
+]
 
-st.title("📊 Social Trends Dashboard")
 
-# ---------------------------
-# User Input
-# ---------------------------
-query = st.text_input("Enter a topic to analyze:", "Automobile market")
+query = st.text_input("Enter your query:", "What are the latest trends in online grocery delivery services?")
 
-if query:
-    with st.spinner("Fetching social posts and analyzing trends..."):
-        # Run your agent
-        response = SocialTrends_agent(query)
-        trends = extract_trends_from_agent_response(response)
+if st.button("Run Agents") and query.strip():
+    trends = SocialTrends_agent(query)
 
-    if not trends:
-        st.warning("No trends found for this query.")
-    else:
-        # ---------------------------
-        # Prepare Data
-        # ---------------------------
-        df = pd.DataFrame(trends)
-        df['sentiment'] = df['sentiment'].str.capitalize()  # Normalize for display
+    # Convert to DataFrame
+    df = pd.DataFrame(trends)
 
-        # ---------------------------
-        # Display Data
-        # ---------------------------
-        st.subheader("Trends Table")
-        st.dataframe(df)
+    st.set_page_config(page_title="Market Trend analysis", layout="wide")
 
-        # ---------------------------
-        # Sentiment Distribution
-        # ---------------------------
-        st.subheader("Sentiment Distribution")
-        sentiment_counts = df['sentiment'].value_counts()
-        fig1, ax1 = plt.subplots()
-        sns.barplot(x=sentiment_counts.index, y=sentiment_counts.values, palette="coolwarm", ax=ax1)
-        ax1.set_ylabel("Number of Trends")
-        ax1.set_xlabel("Sentiment")
-        st.pyplot(fig1)
+    st.title("📈 EV Market Trends Analysis")
+    st.markdown("Analysis of extracted market trends from social media posts.")
 
-        # ---------------------------
-        # Trend Mentions Chart
-        # ---------------------------
-        st.subheader("Trend Mentions")
-        fig2, ax2 = plt.subplots(figsize=(10, 5))
-        sns.barplot(
-            x="trend", y="mentions", hue="sentiment",
-            data=df.sort_values("mentions", ascending=False),
-            dodge=False, palette={"Positive": "green", "Negative": "red", "Neutral": "gray"}, ax=ax2
-        )
-        ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, ha="right")
-        ax2.set_ylabel("Mentions")
-        ax2.set_xlabel("Trend")
-        st.pyplot(fig2)
+    # =========================
+    # Sentiment Distribution
+    # =========================
+    st.subheader("🔹 Sentiment Distribution")
+
+    sentiment_counts = df["sentiment"].value_counts()
+
+    fig1, ax1 = plt.subplots()
+    ax1.pie(
+        sentiment_counts,
+        labels=sentiment_counts.index,
+        autopct="%1.1f%%",
+        startangle=90,
+        wedgeprops={'edgecolor': 'white'}
+    )
+    ax1.set_title("Sentiment Breakdown")
+    st.pyplot(fig1)
+
+    # =========================
+    # Mentions per Trend
+    # =========================
+    st.subheader("🔹 Mentions per Trend")
+
+    fig2, ax2 = plt.subplots(figsize=(10, 6))
+    df_sorted = df.sort_values(by="mentions", ascending=False)
+    ax2.barh(df_sorted["trend"], df_sorted["mentions"], color="skyblue")
+    ax2.set_xlabel("Mentions")
+    ax2.set_ylabel("Trend")
+    ax2.set_title("Mentions per Trend")
+    st.pyplot(fig2)
+
+    # =========================
+    # Trends Table
+    # =========================
+    st.subheader("🔹 Detailed Trends Data")
+    st.dataframe(df, use_container_width=True)
+
+    # =========================
+    # Sentiment vs Mentions
+    # =========================
+    st.subheader("🔹 Sentiment vs Mentions")
+
+    fig3, ax3 = plt.subplots(figsize=(7, 5))
+    df.groupby("sentiment")["mentions"].sum().plot(kind="bar", ax=ax3, color=["green", "red", "gray"])
+    ax3.set_ylabel("Total Mentions")
+    ax3.set_title("Mentions by Sentiment")
+    st.pyplot(fig3)
+
+    # =========================
+    # Highlight Insights
+    # =========================
+    st.subheader("🔹 Key Insights")
+    st.markdown(f"""
+    - **Total Trends Analyzed:** {len(df)}
+    - **Most Frequent Sentiment:** {sentiment_counts.idxmax()} ({sentiment_counts.max()} mentions)
+    - **Most Talked About Trend:** {df_sorted.iloc[0]['trend']} ({df_sorted.iloc[0]['mentions']} mentions)
+    """)
