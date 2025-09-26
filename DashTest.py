@@ -16,6 +16,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from SocialMedia_Trend_Agent.SocialAgent import SocialTrends_agent
+from utills.cleaning import remove_think_tags
 
 # ---------------------------
 # Helpers
@@ -102,15 +103,14 @@ if st.button("Run Agents") and query.strip():
         with st.spinner("Running Summarizer..."):
             summary_out = Summarizer_agent()
             st.subheader("📝 Summarizer Output")
-            st.markdown(clean_text(summary_out.get("summary", "")))
+            st.markdown(remove_think_tags(summary_out.get("summary", "")))
 
     # --------------------------- Market Research ---------------------------
     with tabs[2]:
         with st.spinner("Running Market Research..."):
             research_out = MarketResearch_agent()
             st.subheader("📈 Market Research Insights")
-            st.markdown(clean_text(research_out.get("insights", "")))
-
+            st.markdown(remove_think_tags(clean_text(research_out.get("insights", ""))))
 
 
 
@@ -195,7 +195,7 @@ if st.button("Run Agents") and query.strip():
         with st.spinner("Running Agents..."):
 
             st.set_page_config(page_title="Pipeline B Test", layout="wide")
-            st.title("🔬 Market Scope → Trend → Tickers → Performance (Pipeline B)")
+            st.title("Market Competitor Trends")
             # --- Minimal CSS for cards and chips ---
             st.markdown("""
                 <style>
@@ -271,7 +271,7 @@ if st.button("Run Agents") and query.strip():
                 }
 
 
-            st.header("🧠 Trend Charts — Agent Outputs")
+            st.header("Trend Charts")
 
             # Competitor Comparison (structured list) + Competitor Trend timeseries
             with st.expander("🏁 Trend of Major Market Players", expanded=True):
@@ -298,7 +298,7 @@ if st.button("Run Agents") and query.strip():
                     chart = _altair_timeseries_chart(ts_ct, title=ts_ct.get("title","Competitor price movement (rebased)"))
                     if chart is not None:
                         st.altair_chart(chart, use_container_width=True)
-                        st.caption("Competitor price movement")
+                        st.caption("Competitor price movement. Rebased so each series starts at 100 in its first year")
                     else:
                         st.info("Competitor trend: no series.")
                 else:
