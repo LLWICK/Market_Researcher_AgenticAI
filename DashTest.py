@@ -239,35 +239,67 @@ if st.button("Run Agents") and query.strip():
                     df[c] = pd.to_numeric(df[c], errors="coerce")
                 return df
 
+
             def _calc_kpis(timeseries: dict) -> dict:
-                """Return simple KPIs: total return, CAGR, best/worst year."""
+                """Return simple KPIs: total return, CAGR, best/worst year.
+                Robust to missing/NaN data and short series.
+                """
                 df = _series_to_df(timeseries)
                 if df.empty:
                     return {}
-                # Use first non-NA row as base; work per series then average
-                kpis = {}
-                years = list(df.index)
-                # compute YoY for each series
-                yoy = df.pct_change() * 100.0
-                # choose a representative (first column) for KPI headline
-                rep = df.columns[0]
-                start_val = df[rep].dropna().iloc[0]
-                end_val = df[rep].dropna().iloc[-1]
-                n_years = max(1, len(df.dropna().index) - 1)
-                total_return = ((end_val / start_val) - 1.0) * 100.0 if start_val and end_val else np.nan
-                cagr = ((end_val / start_val) ** (1.0 / n_years) - 1.0) * 100.0 if start_val and end_val else np.nan
-                # best/worst year based on rep series YoY
-                yoy_rep = yoy[rep].dropna()
-                best_year = yoy_rep.idxmax() if not yoy_rep.empty else None
-                worst_year = yoy_rep.idxmin() if not yoy_rep.empty else None
+
+                # Drop rows that are entirely NaN and ensure we have at least 2 data points
+                df = df.dropna(how="all")
+                if df.shape[0] < 2:
+                    return {}
+
+                # Pick a representative series that has at least 2 valid values
+                rep = None
+                for col in df.columns:
+                    if df[col].dropna().shape[0] >= 2:
+                        rep = col
+                        break
+                if rep is None:
+                    return {}
+
+                s = df[rep].dropna()
+                if s.shape[0] < 2:
+                    return {}
+
+                start_val = s.iloc[0]
+                end_val = s.iloc[-1]
+                n_years = max(1, len(s.index) - 1)
+
+                # Guard against division by zero / invalid numbers
+                try:
+                    total_return = ((end_val / start_val) - 1.0) * 100.0
+                except Exception:
+                    total_return = float("nan")
+                try:
+                    cagr = ((end_val / start_val) ** (1.0 / n_years) - 1.0) * 100.0
+                except Exception:
+                    cagr = float("nan")
+
+                # YoY for the representative series only (avoids multi-column alignment issues)
+                yoy_rep = s.pct_change() * 100.0
+                yoy_rep_clean = yoy_rep.dropna()
+                best_year = yoy_rep_clean.idxmax() if not yoy_rep_clean.empty else None
+                worst_year = yoy_rep_clean.idxmin() if not yoy_rep_clean.empty else None
+                best_yoy = None if yoy_rep_clean.empty else round(float(yoy_rep_clean.max()), 2)
+                worst_yoy = None if yoy_rep_clean.empty else round(float(yoy_rep_clean.min()), 2)
+
+                def _round_or_none(x):
+                    import math
+                    return None if (x is None or isinstance(x, float) and (math.isnan(x) or math.isinf(x))) else round(float(x), 2)
+
                 return {
                     "rep_series": rep,
-                    "total_return_pct": None if pd.isna(total_return) else round(float(total_return), 2),
-                    "cagr_pct": None if pd.isna(cagr) else round(float(cagr), 2),
+                    "total_return_pct": _round_or_none(total_return),
+                    "cagr_pct": _round_or_none(cagr),
                     "best_year": best_year,
-                    "best_year_yoy_pct": None if yoy_rep.empty else round(float(yoy_rep.max()), 2),
+                    "best_year_yoy_pct": best_yoy,
                     "worst_year": worst_year,
-                    "worst_year_yoy_pct": None if yoy_rep.empty else round(float(yoy_rep.min()), 2),
+                    "worst_year_yoy_pct": worst_yoy,
                 }
 
 
