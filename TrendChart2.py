@@ -254,25 +254,48 @@ def CompetitorTrend_agent(query: str | None = None):
     # Apply defaults if not specified by upstream
     payload.setdefault("period", {"from": "2019", "to": "2025"})
     payload.setdefault("region", "global")
-    payload.setdefault("rebase", "none")
+    payload.setdefault("rebase", "per_series")
     try:
-        # text = _ensure_json_text(out)
+        # Run the agent and capture raw text
         raw = _agent_text(competitor_trend_agent.run(json.dumps(payload)))
-        text = _salvage_json(raw) or {}
+        # Print raw for debugging before salvage
+        print("\n[CompetitorTrendAgent][raw]\n" + str(raw) + "\n")
+
+        # Common fallback used if parsing fails or output is empty
+        def _fallback(note: str):
+            return json.dumps({
+                "resolved_tickers": [],
+                "timeseries": {
+                    "title": "Competitor price movement",
+                    "unit": "index (rebased=100)",
+                    "frequency": "yearly",
+                    "x": [],
+                    "series": []
+                },
+                "notes": [note],
+                "data_gaps": []
+            })
+
+        parsed = _salvage_json(raw)
+        # If salvage returns nothing or an empty dict, emit fallback with a note
+        if not parsed or (isinstance(parsed, dict) and len(parsed) == 0):
+            text = _fallback("empty_or_invalid_output; raw was captured in log")
+        else:
+            # Accept either a dict or a JSON string; normalize to JSON text for downstream/UI
+            text = parsed if isinstance(parsed, str) else json.dumps(parsed)
     except Exception as e:
-        fallback = {
+        text = json.dumps({
             "resolved_tickers": [],
             "timeseries": {
-                "title": "Competitor price movement (rebased)",
-                "unit": "index",
+                "title": "Competitor price movement",
+                "unit": "index (rebased=100)",
                 "frequency": "yearly",
                 "x": [],
                 "series": []
             },
             "notes": [f"error: {str(e)}"],
             "data_gaps": []
-        }
-        text = json.dumps(fallback)
+        })
     print("\n=== [CompetitorTrendAgent] Output ===")
     print(text)
     print("=== [CompetitorTrendAgent] Output End ===\n")
@@ -337,5 +360,5 @@ def EventPriceSpike_agent(query: str, adoption: dict | None = None):
     return text   
 
 # Example usage:
-results = CompetitorTrend_agent("Electric Vehicle market trends")
-print(results)
+# results = CompetitorTrend_agent("Electric Vehicle market trends")
+# print(results)

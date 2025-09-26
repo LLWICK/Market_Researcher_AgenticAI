@@ -1,0 +1,37 @@
+{
+  "palo alto networks": {
+    "ticker": "PANW",
+    "exchange": "NYSE",
+    "ts": 1758719251.3527925
+  },
+  "microsoft": {
+    "ticker": "MSFT",
+    "exchange": "NASDAQ",
+    "ts": 1758719251.3536892
+  },
+  "cisco systems": {
+    "ticker": "CSCO",
+    "exchange": "NASDAQ",
+    "ts": 1758719251.353169
+  },
+  "cyberark": {
+    "ticker": "CYBR",
+    "exchange": "NASDAQ",
+    "ts": 1758719225.0961103
+  },
+  "crowdstrike": {
+    "ticker": "CRWD",
+    "exchange": "NASDAQ",
+    "ts": 1758719225.096502
+  },
+  "check point": {
+    "ticker": "CHKP",
+    "exchange": "NASDAQ",
+    "ts": 1758719251.35427
+  },
+  "symantec": {
+    "ticker": "NLOK",
+    "exchange": "NASDAQ",
+    "ts": 1758719251.354922
+  }
+}
