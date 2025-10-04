@@ -1,29 +1,13 @@
 import { Code2 } from "lucide-react";
+import React from "react";
 
-export default function ScopeCard(prop) {
-  // Example fallback data
+const ScopeCard = ({ summary }) => (
+  <div className="bg-white shadow rounded-2xl p-5 col-span-2 border border-gray-100">
+    <h2 className="text-xl font-semibold mb-2 text-gray-800">
+      Executive Summary
+    </h2>
+    <p className="text-gray-700 whitespace-pre-line text-sm">{summary}</p>
+  </div>
+);
 
-  return (
-    <div className="p-4 bg-white rounded-2xl shadow space-y-2">
-      <div className="flex items-center space-x-2 mb-2">
-        <Code2 className="w-5 h-5 text-blue-500" />
-        <h2 className="text-lg font-semibold">{prop.title}</h2>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <div>
-          <span className="font-semibold">Scale:</span> {prop.scale}
-        </div>
-        <div>
-          <span className="font-semibold">Sector:</span> {prop.sector}
-        </div>
-        <div>
-          <span className="font-semibold">Time Range:</span> {prop.timeRange}
-        </div>
-        <div className="col-span-2">
-          <span className="font-semibold">Competitors:</span>{" "}
-        </div>
-      </div>
-    </div>
-  );
-}
+export default ScopeCard;
