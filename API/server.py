@@ -74,7 +74,8 @@ def register(user: UserRegister):
 @app.post("/login")
 def login(user: UserLogin):
     db_user = db.users.find_one({"email": user.email})
-    if not db_user or not verify_password(user.password, db_user["password"]):
+    if not db_user or not  (user.password == db_user["password"]):
+    #if not db_user or not verify_password(user.password, db_user["password"]):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     token = create_access_token({"user_id": str(db_user["_id"])})
     return {"access_token": token, "username": db_user["username"]}

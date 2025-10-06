@@ -13,14 +13,18 @@ import MarketTrendChart from "../components/MarketTrendChart";
 export default function Dashboard() {
   const [data, setResponse] = useState("");
   const [trigger, setTrigger] = useState(false);
+  const [isLoading, setLoading] = useState(false);
 
   const handleQuerySubmit = (query) => {
     console.log("User Query:", query);
+
+    setLoading(true);
 
     axios
       .post("http://127.0.0.1:8000/analyze", { query: query })
       .then((res) => {
         setResponse(res.data.team_b);
+        setLoading(false);
         setTrigger(true);
         console.log(res.data.team_b);
       })
@@ -32,6 +36,10 @@ export default function Dashboard() {
       <SideBar />
       <main className="flex-1 p-6 space-y-6">
         <QueryInput onSubmit={handleQuerySubmit} />
+
+        {isLoading ? (
+          <div class="border-gray-300 h-20 w-20 animate-spin rounded-full border-8 border-t-blue-600" />
+        ) : null}
 
         {trigger ? (
           <div className="grid grid-cols-2 gap-6">
