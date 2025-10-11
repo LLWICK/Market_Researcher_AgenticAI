@@ -33,7 +33,7 @@ def chunk_text(text: str, max_words: int = 500) -> list[str]:
 # ---------------------------
 summarizer_agent = Agent(
     name="SummarizerAgent",
-    model=Groq(id="deepseek-r1-distill-llama-70b"),
+    model=Groq(id="llama-3.3-70b-versatile"),
     tools=[DuckDuckGo()],
     instructions="""
 You are a **Market Insight Summarizer Agent**.
@@ -67,7 +67,7 @@ Rules:
 
 market_research_agent = Agent(
     name="MarketResearchAgent",
-    model=Groq(id="deepseek-r1-distill-llama-70b"),
+    model=Groq(id="llama-3.3-70b-versatile"),
     instructions="Analyze competitors, risks, and opportunities in the market.",
 
 
