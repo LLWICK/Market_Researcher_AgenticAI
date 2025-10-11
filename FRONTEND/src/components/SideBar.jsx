@@ -1,8 +1,16 @@
 import { Home, Search, BarChart2, FileText, Moon, Sun } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Sidebar() {
   const [dark, setDark] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    navigate("/login");
+  };
 
   return (
     <aside
@@ -31,6 +39,17 @@ export default function Sidebar() {
         {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         <span>{dark ? "Light Mode" : "Dark Mode"}</span>
       </button>
+
+      <div>
+        {/* ... other sidebar items ... */}
+
+        <button
+          onClick={handleLogout}
+          className="p-4 bg-red-600 hover:bg-red-700 rounded m-4"
+        >
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }
