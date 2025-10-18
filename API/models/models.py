@@ -15,7 +15,7 @@ class QueryRequest(BaseModel):
     query: str
 
 class ChatHistory(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")
+    id: Optional[str] = Field(default=None, alias="_id")
     user_id: str
     query: str
     response: Any  # could be dict, list, or string depending on your agent pipeline

@@ -101,7 +101,7 @@ async def analyze(query: Query, user_id: str = Depends(get_current_user)):
 # =========================================
 @app.post("/save_chat")
 def save_chat(chat: ChatHistory):
-    db.chat_history.insert_one(chat.dict(by_alias=True))
+    db.chat_history.insert_one(chat.dict(by_alias=True, exclude_none=True))
     return {"message": "Chat saved successfully"}
 
 @app.get("/get_chats/{user_id}")
