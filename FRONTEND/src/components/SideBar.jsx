@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Sidebar() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
   const navigate = useNavigate();
 
   const handleLogout = () => {
