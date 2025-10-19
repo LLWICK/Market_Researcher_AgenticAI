@@ -5,8 +5,21 @@ from pipeline import run_pipeline
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from Middleware.auth import hash_password, verify_password, create_access_token
-from models.models import UserRegister, UserLogin, QueryRequest
+from models.models import UserRegister, UserLogin, QueryRequest,ChatHistory
 from jose import jwt, JWTError
+from bson import ObjectId
+
+# Custom encoder for ObjectId → string
+def serialize_doc(doc):
+    """Converts MongoDB document ObjectIds to strings recursively."""
+    if isinstance(doc, list):
+        return [serialize_doc(d) for d in doc]
+    if isinstance(doc, dict):
+        return {k: serialize_doc(v) for k, v in doc.items()}
+    if isinstance(doc, ObjectId):
+        return str(doc)
+    return doc
+
 
 # =========================================
 # FastAPI setup
@@ -99,12 +112,16 @@ async def analyze(query: Query, user_id: str = Depends(get_current_user)):
 # =========================================
 # User history
 # =========================================
-@app.get("/history")
-async def get_history(user_id: str = Depends(get_current_user)):
-    history = list(db.queries.find({"user_id": user_id}))
-    for h in history:
-        h["_id"] = str(h["_id"])
-    return {"history": history}
+@app.post("/save_chat")
+def save_chat(chat: ChatHistory):
+    db.chat_history.insert_one(chat.dict(by_alias=True, exclude_none=True))
+    return {"message": "Chat saved successfully"}
+
+@app.get("/get_chats/{user_id}")
+def get_chats(user_id: str):
+    chats = list(db.chat_history.find({"user_id": user_id}))
+    chats = serialize_doc(chats)
+    return {"history": chats}
 
 
 @app.post("/analyze")
