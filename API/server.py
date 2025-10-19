@@ -7,6 +7,19 @@ from pymongo.server_api import ServerApi
 from Middleware.auth import hash_password, verify_password, create_access_token
 from models.models import UserRegister, UserLogin, QueryRequest,ChatHistory
 from jose import jwt, JWTError
+from bson import ObjectId
+
+# Custom encoder for ObjectId → string
+def serialize_doc(doc):
+    """Converts MongoDB document ObjectIds to strings recursively."""
+    if isinstance(doc, list):
+        return [serialize_doc(d) for d in doc]
+    if isinstance(doc, dict):
+        return {k: serialize_doc(v) for k, v in doc.items()}
+    if isinstance(doc, ObjectId):
+        return str(doc)
+    return doc
+
 
 # =========================================
 # FastAPI setup
@@ -107,6 +120,7 @@ def save_chat(chat: ChatHistory):
 @app.get("/get_chats/{user_id}")
 def get_chats(user_id: str):
     chats = list(db.chat_history.find({"user_id": user_id}))
+    chats = serialize_doc(chats)
     return {"history": chats}
 
 
