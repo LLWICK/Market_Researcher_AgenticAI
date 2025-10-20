@@ -1,6 +1,6 @@
 import { Home, Search, BarChart2, FileText, Moon, Sun } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Sidebar() {
   const [dark, setDark] = useState(true);

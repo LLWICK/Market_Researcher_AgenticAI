@@ -128,3 +128,46 @@ def get_chats(user_id: str):
 async def analyze(query: Query):
     result = run_pipeline(query.query)
     return result
+
+
+##############################################################################
+#RAG Agent
+
+# routes/rag_routes.py
+from fastapi import APIRouter, UploadFile, File, Form
+import tempfile, shutil, os, sys
+from PyPDF2 import PdfReader
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from RAG_agent.Rag_Agent import RAGAgent
+
+router = APIRouter()
+rag_agent = RAGAgent()
+
+def extract_text_from_pdf(path):
+    reader = PdfReader(path)
+    return "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+
+
+@router.post("/upload-document")
+async def upload_document(user_id: str = Form(...), file: UploadFile = File(...)):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    text = (
+        extract_text_from_pdf(tmp_path)
+        if file.filename.endswith(".pdf")
+        else open(tmp_path, encoding="utf-8").read()
+    )
+
+    rag_agent.add_document(user_id=user_id, text=text, metadata={"filename": file.filename})
+    return {"message": f"{file.filename} added successfully for user {user_id}"}
+
+
+@router.get("/rag/documents")
+async def list_documents(user_id: str):
+    docs = rag_agent.get_user_documents(user_id)
+    return {"documents": docs}
+
+
