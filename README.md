@@ -25,13 +25,13 @@ Manage user authentication, chat history, and custom document knowledge bases.
 🧩 Tech Stack
 Layer	Technology
 
-Agent integration - Phi Data (Agno) framework
-AI Models	- Groq / Llama 3.3, Open AI 
-Authentication	JWT Tokens (FastAPI + passlib)
-Frontend	React, Tailwind CSS, Axios
-Backend	FastAPI, Python 3.10+
-Database	MongoDB (User Auth + Chat History)
-Vector Store	ChromaDB (with SentenceTransformer embeddings)
+Agent integration - Phi Data (Agno) framework.
+AI Models	- Groq / Llama 3.3, Open AI .
+Authentication	JWT Tokens (FastAPI + passlib).
+Frontend	React, Tailwind CSS, Axios.
+Backend	FastAPI, Python 3.10+.
+Database	MongoDB (User Auth + Chat History).
+Vector Store	ChromaDB (with SentenceTransformer embeddings).
 
 
 If you are running the cloned repository for the first time, follow the given instructions
