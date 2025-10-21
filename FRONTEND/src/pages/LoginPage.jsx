@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo3.png";
 
 const LoginPage = () => {
   const [isSignup, setIsSignup] = useState(true);
@@ -41,11 +42,7 @@ const LoginPage = () => {
         {/* --- Left Section (Form) --- */}
         <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 sm:p-12">
           <div className="text-center mb-6">
-            <img
-              src="https://storage.googleapis.com/devitary-image-host.appspot.com/15846435184459982716-LogoMakr_7POjrN.png"
-              alt="Logo"
-              className="w-28 mx-auto"
-            />
+            <img src={logo} alt="Logo" className="w-100" />
           </div>
 
           <h1 className="text-2xl xl:text-3xl font-extrabold mb-6">
