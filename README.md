@@ -6,6 +6,17 @@ first you should install uv on your pc
 
 then open this repo on vs code and give the following command
 
+# Run the project on your PC
+
+backend - 
+cd API
+fastapi run server.py
+
+frontend - 
+cd FRONTEND
+npm install
+npm run dev
+
 
 # uv pip install phidata
 
