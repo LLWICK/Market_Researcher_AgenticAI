@@ -1,6 +1,7 @@
 import { Home, Search, BarChart2, FileText, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import logo from "../assets/logo3.png";
 
 export default function Sidebar() {
   const [dark, setDark] = useState(true);
@@ -20,8 +21,7 @@ export default function Sidebar() {
     >
       {/* Logo / Title */}
       <div className="flex items-center space-x-2 mb-8">
-        <BarChart2 className="w-6 h-6 text-blue-500" />
-        <h1 className="text-xl font-bold">Agentic AI</h1>
+        <img src={logo} alt="Logo" />
       </div>
 
       {/* Navigation */}

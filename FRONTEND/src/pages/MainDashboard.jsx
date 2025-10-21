@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-
+import { ClipLoader } from "react-spinners";
 import SideBar from "../components/SideBar";
 import QueryInput from "../components/QueryInput";
 import ScopeCard from "../components/ScopeCard";
@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [trigger, setTrigger] = useState(false);
   const [userId, setUserId] = useState(null);
   const [useRag, setUseRag] = useState(false); // ✅ Toggle for RAG agent
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -29,6 +30,8 @@ export default function Dashboard() {
 
   const handleQuerySubmit = async (query) => {
     try {
+      setLoading(true); // 🔹 Show loader
+
       if (!useRag) {
         // 🔹 Default IR Scraper pipeline
         const res = await axios.post("http://127.0.0.1:8000/analyze", {
@@ -37,19 +40,18 @@ export default function Dashboard() {
         setData(res.data.team_b);
         setTrigger(true);
 
-        // Save chat to DB
         await axios.post("http://127.0.0.1:8000/save_chat", {
           user_id: userId,
           query,
           response: res.data.team_b,
         });
       } else {
-        // 🔹 Use RAG Agent instead
+        // 🔹 Use RAG Agent
         const res = await axios.post("http://127.0.0.1:8000/rag/query", {
           user_id: userId,
           query,
         });
-        setData({ summary: res.data.response }); // adapt to same layout
+        setData({ summary: res.data.response });
         setTrigger(true);
 
         await axios.post("http://127.0.0.1:8000/save_chat", {
@@ -60,6 +62,8 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Query failed:", err);
+    } finally {
+      setLoading(false); // 🔹 Hide loader
     }
   };
 
@@ -83,8 +87,6 @@ export default function Dashboard() {
         {/* Main content */}
         <main className="col-span-2 space-y-6">
           <div className="flex justify-between items-center mb-2">
-            <h1 className="text-2xl font-bold">AI Research Dashboard</h1>
-
             {/* ✅ RAG toggle */}
             <label className="flex items-center space-x-2">
               <span>Use RAG Agent</span>
@@ -98,19 +100,29 @@ export default function Dashboard() {
 
           <QueryInput onSubmit={handleQuerySubmit} />
 
-          {trigger && data && (
-            <div className="grid grid-cols-2 gap-6">
-              <ScopeCard summary={data.summary} />
-              <MarketInsightsCard insights={data.market_insights} />
-              <SocialTrendsCard trends={data.social_trends} />
-              <CompetitorTrendChart
-                timeseries={data.competitor_trend?.timeseries}
-              />
-              <MarketTrendChart
-                sectorPerformance={data.market_trend?.sector_performance}
-              />
-              <EventSpikesTable events={data.event_spikes?.events_detected} />
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <ClipLoader color="#3B82F6" size={50} />
+              <p className="ml-3 text-gray-600 font-medium">
+                Generating response...
+              </p>
             </div>
+          ) : (
+            trigger &&
+            data && (
+              <div className="grid grid-cols-2 gap-6">
+                <ScopeCard summary={data.summary} />
+                <MarketInsightsCard insights={data.market_insights} />
+                <SocialTrendsCard trends={data.social_trends} />
+                <CompetitorTrendChart
+                  timeseries={data.competitor_trend?.timeseries}
+                />
+                <MarketTrendChart
+                  sectorPerformance={data.market_trend?.sector_performance}
+                />
+                <EventSpikesTable events={data.event_spikes?.events_detected} />
+              </div>
+            )
           )}
         </main>
       </div>
