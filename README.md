@@ -10,12 +10,12 @@ then open this repo on vs code and give the following command
 
 backend - 
 cd API
-fastapi run server.py
+// fastapi run server.py
 
 frontend - 
 cd FRONTEND
-npm install
-npm run dev
+// npm install
+// npm run dev
 
 
 # uv pip install phidata
