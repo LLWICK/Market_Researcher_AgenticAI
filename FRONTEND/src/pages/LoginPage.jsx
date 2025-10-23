@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo3.png";
+import { ToastContainer, toast, Bounce } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css"; // <-- Make sure to import this
 
 const LoginPage = () => {
   const [isSignup, setIsSignup] = useState(true);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [username, setUsername] = useState("");
-  const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -24,20 +25,39 @@ const LoginPage = () => {
         `http://127.0.0.1:8000/${endpoint}`,
         payload
       );
-      setMessage(res.data.message || "Success!");
+
+      // ✅ Show success toast
+      toast.success(res.data.message || "Success!", {
+        position: "top-center",
+        autoClose: 3000,
+        transition: Bounce,
+      });
 
       if (!isSignup) {
         localStorage.setItem("token", res.data.access_token);
         localStorage.setItem("username", res.data.username);
-        navigate("/dashboard");
+
+        // Small delay before navigation so toast shows briefly
+        setTimeout(() => navigate("/dashboard"), 1000);
+      } else {
+        // Clear form after successful signup
+        setFormData({ email: "", password: "" });
+        setUsername("");
+        setIsSignup(false);
       }
     } catch (error) {
-      setMessage(error.response?.data?.detail || "Error occurred");
+      const errMsg = error.response?.data?.detail || "An error occurred!";
+      toast.error(errMsg, {
+        position: "top-center",
+        autoClose: 4000,
+        transition: Bounce,
+      });
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
+      <ToastContainer theme="light" />
       <div className="w-full max-w-6xl bg-white shadow-lg rounded-lg flex flex-col lg:flex-row overflow-hidden h-[90vh]">
         {/* --- Left Section (Form) --- */}
         <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 sm:p-12">
@@ -101,21 +121,12 @@ const LoginPage = () => {
               <span className="ml-3">{isSignup ? "Sign Up" : "Sign In"}</span>
             </button>
 
-            {message && (
-              <p className="text-center text-sm text-gray-600 mt-2">
-                {message}
-              </p>
-            )}
-
             <p className="text-sm text-center text-gray-600 mt-4">
               {isSignup ? "Already have an account?" : "Don’t have an account?"}{" "}
               <button
                 type="button"
                 className="text-indigo-500 hover:underline"
-                onClick={() => {
-                  setIsSignup(!isSignup);
-                  setMessage("");
-                }}
+                onClick={() => setIsSignup(!isSignup)}
               >
                 {isSignup ? "Sign In" : "Sign Up"}
               </button>
