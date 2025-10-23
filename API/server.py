@@ -181,3 +181,11 @@ async def delete_document(user_id: str, doc_id: str):
 
 
 
+@app.post("/rag/query")
+async def query_documents(user_id: str = Form(...), query: str = Form(...)):
+    """Run a user query against their uploaded docs."""
+    try:
+        answer = rag_agent.query(user_id, query)
+        return {"response": answer}
+    except Exception as e:
+        return {"error": str(e)}
