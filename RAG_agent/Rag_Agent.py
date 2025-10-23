@@ -38,3 +38,15 @@ class RAGAgent:
             }
             for doc_id, meta in zip(data["ids"], data["metadatas"])
         ]
+    
+
+    def delete_document(self, user_id: str, doc_id: str):
+        """Delete a document from a user's Chroma collection"""
+        try:
+            collection = self.vector_manager.get_collection(user_id)
+            collection.delete(ids=[doc_id])
+            return True
+        except Exception as e:
+            print(f"Error deleting doc {doc_id}: {e}")
+            return False
+

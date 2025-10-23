@@ -134,7 +134,8 @@ async def analyze(query: Query):
 #RAG Agent
 
 # routes/rag_routes.py
-from fastapi import APIRouter, UploadFile, File, Form
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 import tempfile, shutil, os, sys
 from PyPDF2 import PdfReader
 
@@ -149,7 +150,7 @@ def extract_text_from_pdf(path):
     return "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
 
 
-@router.post("/upload-document")
+@app.post("/upload-document")
 async def upload_document(user_id: str = Form(...), file: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:
         shutil.copyfileobj(file.file, tmp)
@@ -165,9 +166,18 @@ async def upload_document(user_id: str = Form(...), file: UploadFile = File(...)
     return {"message": f"{file.filename} added successfully for user {user_id}"}
 
 
-@router.get("/rag/documents")
+@app.get("/rag/documents")
 async def list_documents(user_id: str):
     docs = rag_agent.get_user_documents(user_id)
     return {"documents": docs}
+
+
+@app.delete("/rag/delete-document/{user_id}/{doc_id}")
+async def delete_document(user_id: str, doc_id: str):
+    success = rag_agent.delete_document(user_id, doc_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"message": f"Document {doc_id} deleted for user {user_id}"}
+
 
 
