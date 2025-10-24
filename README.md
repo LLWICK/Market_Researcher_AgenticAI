@@ -34,9 +34,18 @@ Layer	Technology
 7. Vector Store	ChromaDB (with SentenceTransformer embeddings).
 
 
+# Contributors 
+
+1. WICKRAMAARACHCHI  L T B - Data scraper pipeline and RAG agent, vector database
+2. SENARATNA S T S - Market researcher and trend analyzer agent
+3. GURUSINGHE T M - Trend analyzer and event spike agents
+4. JAYATHILAKA K A - Social Trend analyzer (Reddit API) agent and Fast API setup for the backend
+
+
+
 If you are running the cloned repository for the first time, follow the given instructions
 
-first you should install uv on your pc
+first you should install UV on your pc
 
 
 
