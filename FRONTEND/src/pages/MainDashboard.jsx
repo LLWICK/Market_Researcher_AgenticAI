@@ -12,6 +12,7 @@ import MarketTrendChart from "../components/MarketTrendChart";
 import EventSpikesTable from "../components/EventSpikesTable";
 import ChatHistory from "../components/ChatHistory";
 import RagDocuments from "../components/RagDocuments";
+import RagResponseCard from "../components/RagResponseCard";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -47,10 +48,18 @@ export default function Dashboard() {
         });
       } else {
         // 🔹 Use RAG Agent
-        const res = await axios.post("http://127.0.0.1:8000/rag/query", {
-          user_id: userId,
-          query,
-        });
+        const formData = new FormData();
+        formData.append("user_id", userId);
+        formData.append("query", query);
+
+        const res = await axios.post(
+          "http://127.0.0.1:8000/rag/query",
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
+
         setData({ summary: res.data.response });
         setTrigger(true);
 
@@ -110,18 +119,26 @@ export default function Dashboard() {
           ) : (
             trigger &&
             data && (
-              <div className="grid grid-cols-2 gap-6">
-                <ScopeCard summary={data.summary} />
-                <MarketInsightsCard insights={data.market_insights} />
-                <SocialTrendsCard trends={data.social_trends} />
-                <CompetitorTrendChart
-                  timeseries={data.competitor_trend?.timeseries}
-                />
-                <MarketTrendChart
-                  sectorPerformance={data.market_trend?.sector_performance}
-                />
-                <EventSpikesTable events={data.event_spikes?.events_detected} />
-              </div>
+              <>
+                {useRag ? (
+                  <RagResponseCard response={data.summary} />
+                ) : (
+                  <div className="grid grid-cols-2 gap-6">
+                    <ScopeCard summary={data.summary} />
+                    <MarketInsightsCard insights={data.market_insights} />
+                    <SocialTrendsCard trends={data.social_trends} />
+                    <CompetitorTrendChart
+                      timeseries={data.competitor_trend?.timeseries}
+                    />
+                    <MarketTrendChart
+                      sectorPerformance={data.market_trend?.sector_performance}
+                    />
+                    <EventSpikesTable
+                      events={data.event_spikes?.events_detected}
+                    />
+                  </div>
+                )}
+              </>
             )
           )}
         </main>
