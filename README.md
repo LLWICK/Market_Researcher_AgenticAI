@@ -33,11 +33,89 @@ Layer	Technology
 6. Database	MongoDB (User Auth + Chat History).
 7. Vector Store	ChromaDB (with SentenceTransformer embeddings).
 
+# Repo Structure
+```
 
+Market_Researcher_AgenticAI/
+├── API/                                   # Backend API (FastAPI-based)
+│   ├── Middleware/
+│   │   └── auth.py                        # JWT authentication middleware
+│   ├── models/
+│   │   └── models.py                      # MongoDB schemas
+│   ├── storage/                           # Local storage or uploads (optional)
+│   ├── vectorstore/                       # Vector DB initialization and persistence
+│   ├── Agent_setup.py                     # RAG + Agent backend setup
+│   ├── MongoDBCon.py                      # MongoDB connection helper
+│   ├── pipeline.py                        # FastAPI route orchestration for RAG pipeline
+│   └── server.py                          # Main FastAPI app entry point
+
+├── FRONTEND/                              # Frontend (React + Vite + Tailwind)
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/                        # Images, icons
+│   │   ├── components/                    # UI Components (Cards, Charts, Tables, etc.)
+│   │   ├── pages/                         # App pages (Dashboard, Library, etc.)
+│   │   ├── routes/                        # React Router routes
+│   │   ├── App.jsx                        # Root React component
+│   │   ├── App.css                        # Global styles
+│   │   ├── index.css                      # Tailwind setup
+│   │   └── main.jsx                       # Entry point
+│   ├── package.json
+│   ├── vite.config.js
+│   └── README.md
+
+├── RAG_agent/                             # Retrieval-Augmented Generation logic
+│   └── Rag_Agent.py                       # Core RAG pipeline for contextual retrieval
+
+├── SocialMedia_Trend_Agent/               # Social trend collection and analysis
+│   ├── cookies.json
+│   ├── sns scrape_patch.py                # Patching for sns scraping
+│   ├── SocialAgent.py                     # Handles trend scraping, sentiment tagging
+│   └── test.py
+
+├── Trend_Analyzer_Agent/
+│   └── Trend_Analyzer_Agent.py            # Analyzes extracted trend data
+
+├── Data_Scraper_IR_Agent/                 # Web/IR data scraping module
+│   └── (Python scripts for data scraping and preprocessing)
+
+├── Market_Researcher_Agent/               # Agent coordinating insights and synthesis
+│   └── (Core scripts for overall market research logic)
+
+├── Competitor_Comparison_Agent/           # Agent comparing competitor performance
+│   └── (Analysis helpers for competitor metrics)
+
+├── utills/                                # Utility functions
+│   ├── cleaning.py                        # Data cleaning helpers
+│   ├── extractUtills.py                   # Extraction and parsing logic
+│   ├── scope_utils.py                     # Scope filtering helpers
+│   ├── ta_helpers.py                      # Technical analysis helper functions
+│   └── ticker_cache.py                    # Ticker caching utilities
+
+├── vectorStore/
+│   └── chroma_manager.py                  # ChromaDB vector store management
+
+├── storage/                               # Cache and index storage
+│   ├── cache/
+│   └── index/
+
+├── pre_testing/                           # Jupyter notebooks (prototype testing)
+│   ├── Kasuni.ipynb
+│   ├── Linal.ipynb
+│   ├── Thushan.ipynb
+│   └── Tiyani.ipynb
+├── agent_protocol.py                      # Agent communication protocol
+├── AgentTeam.py                           # Defines all AI agents and interactions
+├── MessageStructure.py                    # Agent message format schema
+├── requirements.txt                        # Backend dependencies
+├── TrendChart2.py                          # Data visualization or testing script
+└── README.md
+
+```
 # Contributors 
 
 1. WICKRAMAARACHCHI  L T B - Data scraper pipeline and RAG agent, vector database
-2. SENARATNA S T S - Market researcher and trend analyzer agent
+2. SENARATNA S T S - Market researcher and summarizer agent
 3. GURUSINGHE T M - Trend analyzer and event spike agents
 4. JAYATHILAKA K A - Social Trend analyzer (Reddit API) agent and Fast API setup for the backend
 
