@@ -15,17 +15,31 @@ class RAGAgent:
         self.vector_manager.add_document(user_id, doc_id, text, metadata)
 
     def query(self, user_id: str, query: str):
-        results = self.vector_manager.query(user_id, query)
-        context = "\n".join([d for d in results["documents"][0]])
+        results = self.vector_manager.query(user_id, query, top_k=3)
+
+        # ✅ Combine retrieved docs into context
+        context = "\n".join([d for d in results["documents"][0] if d])
+
+        # ✅ Limit context length to avoid 413 Payload Too Large
+        MAX_CONTEXT_CHARS = 12000  # ~12KB of text is safe for Groq
+        if len(context) > MAX_CONTEXT_CHARS:
+            context = context[:MAX_CONTEXT_CHARS]
+            context += "\n...[truncated for length]..."
 
         agent = Agent(
             name="RAGAgent",
             model=Groq(id="llama-3.3-70b-versatile"),
-            instructions="Use the provided context to answer the user's query accurately.",
+            instructions=(
+                "You are a retrieval-augmented assistant. "
+                "Answer concisely using only the context provided. "
+                "If the context doesn’t include the answer, say you don’t know."
+            ),
         )
 
         response = agent.run(f"Context:\n{context}\n\nQuestion:\n{query}")
         return response.content if response else "No answer found."
+
+
 
     def get_user_documents(self, user_id: str):
         """Return metadata of all user docs in vectorstore"""

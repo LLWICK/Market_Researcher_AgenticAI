@@ -123,6 +123,17 @@ def get_chats(user_id: str):
     chats = serialize_doc(chats)
     return {"history": chats}
 
+@app.delete("/delete_chat/{chat_id}")
+def delete_chat(chat_id: str):
+    """Delete a specific chat from history using its MongoDB ObjectId."""
+    result = db.chat_history.delete_one({"_id": ObjectId(chat_id)})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    return {"message": f"Chat {chat_id} deleted successfully"}
+
+
 
 @app.post("/analyze")
 async def analyze(query: Query):
