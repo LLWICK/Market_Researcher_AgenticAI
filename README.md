@@ -1,6 +1,6 @@
 
 
-# 🧠 Agentic AI Market Researcher
+#  Agentic AI Market Researcher
 
 An AI-powered Market Research System that combines intelligent agents, web scraping, and retrieval-augmented generation (RAG) to deliver deep market insights — instantly.
 
@@ -12,15 +12,15 @@ Upload personal documents for AI-powered contextual search (RAG).
 
 Manage user authentication, chat history, and custom document knowledge bases.
 
-🚀 Features
+ Features - 
 
-✅ AI Agent Team – Multiple collaborating AI agents analyze web data, trends, and events.
-✅ RAG Agent Integration – Upload PDFs or text documents to enhance contextual understanding.
-✅ Dual Pipeline Toggle – Switch between the IR Scraper Pipeline and RAG Pipeline.
-✅ User Authentication – Secure JWT-based user registration and login.
-✅ Personal Chat History – Persistent chat storage per user in MongoDB.
-✅ Vector Database – ChromaDB-powered embedding storage for personalized RAG responses.
-✅ Frontend Dashboard – Interactive research interface built with React and Tailwind CSS.
+1. AI Agent Team – Multiple collaborating AI agents analyze web data, trends, and events.
+2. RAG Agent Integration – Upload PDFs or text documents to enhance contextual understanding.
+3. Dual Pipeline Toggle – Switch between the IR Scraper Pipeline and RAG Pipeline.
+4. User Authentication – Secure JWT-based user registration and login.
+5. Personal Chat History – Persistent chat storage per user in MongoDB.
+6. Vector Database – ChromaDB-powered embedding storage for personalized RAG responses.
+7. Frontend Dashboard – Interactive research interface built with React and Tailwind CSS.
 
 🧩 Tech Stack
 Layer	Technology
