@@ -26,7 +26,14 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-2">
-        <NavItem icon={<Home />} label="Dashboard" />
+        <Link to={"/dashboard"}>
+          <NavItem icon={<Home />} label="Dashboard" />
+        </Link>
+
+        <Link to={"/documents"}>
+          <NavItem icon={<FileText />} label="Documents" />
+        </Link>
+
         <NavItem icon={<Search />} label="Queries" />
         <NavItem icon={<FileText />} label="Reports" />
       </nav>

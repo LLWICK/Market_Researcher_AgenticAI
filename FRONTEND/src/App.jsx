@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import MainDashboard from "./pages/MainDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import RagDocumentPage from "./pages/RagDocumentPage";
 
 function App() {
   return (
@@ -13,6 +14,14 @@ function App() {
         element={
           <ProtectedRoute>
             <MainDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/documents"
+        element={
+          <ProtectedRoute>
+            <RagDocumentPage />
           </ProtectedRoute>
         }
       />

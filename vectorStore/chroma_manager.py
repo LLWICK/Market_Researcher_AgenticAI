@@ -24,3 +24,9 @@ class ChromaManager:
     def query(self, user_id: str, query: str, top_k: int = 3):
         collection = self.get_collection(user_id)
         return collection.query(query_texts=[query], n_results=top_k)
+    
+
+    def delete_document(self, user_id: str, doc_id: str):
+        collection = self.get_collection(user_id)
+        collection.delete(ids=[doc_id])
+
