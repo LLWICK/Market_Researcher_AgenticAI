@@ -4,3 +4,10 @@ trafilatura
 tenacity
 whoosh
 requests
+praw
+twikit
+pymongo
+python-jose[cryptography]
+fastapi
+passlib
+pypdf2
