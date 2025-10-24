@@ -22,16 +22,16 @@ Manage user authentication, chat history, and custom document knowledge bases.
 6. Vector Database – ChromaDB-powered embedding storage for personalized RAG responses.
 7. Frontend Dashboard – Interactive research interface built with React and Tailwind CSS.
 
-🧩 Tech Stack
+ Tech Stack- 
 Layer	Technology
 
-Agent integration - Phi Data (Agno) framework.
-AI Models	- Groq / Llama 3.3, Open AI .
-Authentication	JWT Tokens (FastAPI + passlib).
-Frontend	React, Tailwind CSS, Axios.
-Backend	FastAPI, Python 3.10+.
-Database	MongoDB (User Auth + Chat History).
-Vector Store	ChromaDB (with SentenceTransformer embeddings).
+1. Agent integration - Phi Data (Agno) framework.
+2. AI Models	- Groq / Llama 3.3, Open AI .
+3. Authentication	JWT Tokens (FastAPI + passlib).
+4. Frontend	React, Tailwind CSS, Axios.
+5. Backend	FastAPI, Python 3.10+.
+6. Database	MongoDB (User Auth + Chat History).
+7. Vector Store	ChromaDB (with SentenceTransformer embeddings).
 
 
 If you are running the cloned repository for the first time, follow the given instructions
@@ -42,14 +42,16 @@ first you should install uv on your pc
 
 # Run the project on your PC
 
+uv pip install -r requirements.txt
+
 backend - 
-cd API
-// fastapi run server.py
+1. cd API
+2. fastapi run server.py
 
 frontend - 
-cd FRONTEND
-// npm install
-// npm run dev
+1. cd FRONTEND
+2.  npm install
+3. npm run dev
 
 
 
