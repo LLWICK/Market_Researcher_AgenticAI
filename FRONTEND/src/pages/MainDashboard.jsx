@@ -48,7 +48,7 @@ export default function Dashboard() {
         });
       } else {
         // 🔹 Use RAG Agent
-        const formData = new FormData();
+        /* const formData = new FormData();
         formData.append("user_id", userId);
         formData.append("query", query);
 
@@ -67,6 +67,18 @@ export default function Dashboard() {
           user_id: userId,
           query,
           response: res.data.response,
+        }); */
+        // 🔹 Default IR Scraper pipeline
+        const res = await axios.post("http://127.0.0.1:8000/analyze", {
+          query,
+        });
+        setData(res.data.team_b);
+        setTrigger(true);
+
+        await axios.post("http://127.0.0.1:8000/save_chat", {
+          user_id: userId,
+          query,
+          response: res.data.team_b,
         });
       }
     } catch (err) {
