@@ -17,6 +17,8 @@ const CompetitorTrendChart = ({ timeseries }) => {
     return row;
   });
 
+  const colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"];
+
   return (
     <div className="bg-white shadow rounded-2xl p-5 col-span-2 border border-gray-100">
       <h2 className="text-lg font-semibold mb-4 text-gray-800">
@@ -36,6 +38,7 @@ const CompetitorTrendChart = ({ timeseries }) => {
               dataKey={s.name}
               strokeWidth={2}
               dot={false}
+              stroke={colors[idx % colors.length]}
             />
           ))}
         </LineChart>

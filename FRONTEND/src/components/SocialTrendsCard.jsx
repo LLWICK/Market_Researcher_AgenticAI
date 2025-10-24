@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 const SocialTrendsCard = ({ trends }) => (
   <div className="bg-white shadow rounded-2xl p-5 border border-gray-100">
     <h2 className="text-lg font-semibold mb-4 text-gray-800">Social Trends</h2>
-    <div className="space-y-2 max-h-80 overflow-y-auto">
+    <div className="space-y-2">
       {trends.map((t, idx) => (
         <div
           key={idx}
