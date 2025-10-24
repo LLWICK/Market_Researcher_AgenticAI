@@ -9,3 +9,5 @@ indexdir
 
 vectorstore
 *.sqlite3 
+.vectorstore
+.API/vectorstore
