@@ -34,8 +34,8 @@ export default function Sidebar() {
           <NavItem icon={<FileText />} label="Documents" />
         </Link>
 
-        <NavItem icon={<Search />} label="Queries" />
-        <NavItem icon={<FileText />} label="Reports" />
+        {/* <NavItem icon={<Search />} label="Queries" />
+        <NavItem icon={<FileText />} label="Reports" /> */}
       </nav>
 
       {/* Dark mode toggle */}
